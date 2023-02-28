@@ -14,3 +14,6 @@ torch
 torchvision
 tqdm
 gpytorch
+jupyterlab
+jupytext
+#pyqt5

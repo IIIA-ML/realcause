@@ -10,7 +10,7 @@ from PIL import Image
 
 FIGSIZE = [12, 5]
 SINGLE_FIGSIZE = [5.5, 5]
-DIR = '../plots'
+DIR = 'plots'
 DPI = 300
 
 
@@ -55,17 +55,17 @@ def compare_joints(x1, y1, x2, y2, xlabel1=None, ylabel1=None, xlabel2=None, yla
 
 def compare_marginal_hists(x1, x2, label1=None, label2=None, ax=None):
     if is_binary(x1, x2):
-        sns.distplot(x1, kde=False, ax=ax, label=label1)
-        sns.distplot(x2, kde=False, ax=ax, label=label2)
+        sns.histplot(x1, kde=False, ax=ax, label=label1)
+        sns.histplot(x2, kde=False, ax=ax, label=label2)
     else:
         try:
-            sns.distplot(x1, ax=ax, label=label1)
+            sns.histplot(x1, ax=ax, label=label1)
         except RuntimeError:
-            sns.distplot(x1, ax=ax, label=label1, kde_kws={'bw': 0.5})
+            sns.histplot(x1, ax=ax, label=label1, kde_kws={'bw': 0.5})
         try:
-            sns.distplot(x2, ax=ax, label=label2)
+            sns.histplot(x2, ax=ax, label=label2)
         except RuntimeError:
-            sns.distplot(x1, ax=ax, label=label1, kde_kws={'bw': 0.5})
+            sns.histplot(x1, ax=ax, label=label1, kde_kws={'bw': 0.5})
 
 
 def is_binary(x1, x2=None):
@@ -159,7 +159,7 @@ def save_and_show(f, save_fname, dir=DIR, test=False):
             save_fname = os.path.join(dir, save_fname)
         f.savefig(save_fname, bbox_inches='tight', dpi=DPI)
     
-    plt.show()
+    #plt.show()
     plt.close()
 
 
