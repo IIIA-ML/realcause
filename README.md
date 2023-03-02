@@ -1,6 +1,8 @@
 # causal-benchmark
 Realistic benchmark for different causal inference methods. The realism comes from fitting generative models to data with an assumed causal structure. 
 
+# My comment
+
 ## Installation
 Once you've created a virtual environment (e.g. with conda, virtualenv, etc.) install the required packages:
 
