@@ -79,7 +79,8 @@ class MLP(BaseGenModel):
                  network_params=None,
                  training_params=TrainingParams(),
                  binary_treatment=False,
-                 outcome_distribution: distributions.BaseDistribution = distributions.FactorialGaussian(),
+                 multivalued_treatment=True,
+                 outcome_distribution: distributions.BaseDistribution = distributions.FactorialGaussianMulti(),
                  outcome_min=None,
                  outcome_max=None,
                  train_prop=1,
@@ -109,6 +110,8 @@ class MLP(BaseGenModel):
             self.treatment_distribution = distributions.Bernoulli()
         else:
             self.treatment_distribution = distributions.FactorialGaussian()
+        if multivalued_treatment:
+            self.treatment_distribution = distributions.Multinoulli()
         self.outcome_distribution = outcome_distribution
         # todo: extract atoms before preprocessing? (i.e. using the non atomic training data's stats)
         if isinstance(outcome_distribution, distributions.MixedDistribution):
@@ -168,6 +171,14 @@ class MLP(BaseGenModel):
         for _ in range(MLP_params.n_hidden_layers - 1):
             hidden_layers += [nn.Linear(dim_h, dim_h), MLP_params.activation]
         hidden_layers += [nn.Linear(dim_h, dim_y * output_multiplier)]
+        return nn.Sequential(*hidden_layers)
+
+    def _build_mlp_t(self, dim_x, dim_t, MLP_params=MLPParams(), output_multiplier=3):
+        dim_h = MLP_params.dim_h
+        hidden_layers = [nn.Linear(dim_x, dim_h), MLP_params.activation]
+        for _ in range(MLP_params.n_hidden_layers - 1):
+            hidden_layers += [nn.Linear(dim_h, dim_h), MLP_params.activation]
+        hidden_layers += [nn.Linear(dim_h, dim_t * output_multiplier)]
         return nn.Sequential(*hidden_layers)
 
     def build_networks(self):
@@ -363,17 +374,9 @@ if __name__ == "__main__":
     plt.hist(y_samples, 50, density=True, alpha=0.5, range=(0, 1))
     plt.legend(["data", "density", "samples"], loc=1)
 
-    mlp = MLP(w, t, y,
-              training_params=training_params,
-              network_params=dict(mlp_params_t_w=MLPParams(), mlp_params_y_tw=mlp_params_y_tw),
-              binary_treatment=True, outcome_distribution=dist,
-              outcome_min=0.0, outcome_max=1.0,
-              train_prop=0.5,
-              val_prop=0.1,
-              test_prop=0.4,
-              seed=1,
-              early_stop=early_stop,
-              ignore_w=ignore_w,
+    mlp = MLP(w, t, y, seed=1, network_params=dict(mlp_params_t_w=MLPParams(), mlp_params_y_tw=mlp_params_y_tw),
+              training_params=training_params, binary_treatment=True, outcome_distribution=dist, outcome_min=0.0,
+              outcome_max=1.0, train_prop=0.5, val_prop=0.1, test_prop=0.4, early_stop=early_stop, ignore_w=ignore_w,
               w_transform=preprocess.Standardize, y_transform=preprocess.Normalize)
     mlp.train()
     data_samples = mlp.sample()

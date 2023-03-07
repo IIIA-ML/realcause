@@ -22,6 +22,8 @@ References:
 """
 
 import numpy as np
+import pandas as pd
+import os
 from utils import download_dataset, unzip
 
 IHDP_100_TRAIN_URL = 'http://www.fredjo.com/files/ihdp_npci_1-100.train.npz'
@@ -30,7 +32,184 @@ IHDP_1000_TRAIN_URL = 'http://www.fredjo.com/files/ihdp_npci_1-1000.train.npz.zi
 IHDP_1000_TEST_URL = 'http://www.fredjo.com/files/ihdp_npci_1-1000.test.npz.zip'
 
 SPLIT_OPTIONS = {'train', 'test', 'all'}
-N_REALIZATIONS_OPTIONS = {100, 1000}
+N_REALIZATIONS_OPTIONS = {1, 100, 1000}
+
+
+def load_and_format_covariates(file_path):
+
+    data = pd.read_csv(file_path, delimiter=',')
+
+    binfeats = ["bw","b.head","preterm","birth.o","nnhealth","momage"]
+    contfeats = ["sex","twin","b.marr","mom.lths","mom.hs",	"mom.scoll","cig","first","booze","drugs","work.dur","prenatal","ark","ein","har","mia","pen","tex","was",'momwhite','momblack','momhisp']
+
+    perm = binfeats + contfeats
+    x = data[perm]
+    return x.values
+
+def load_all_other_vars(file_path):
+    data = pd.read_csv(file_path, delimiter=',')
+    t, y, y0, y1, y2 = data['z'], data['y'], data['y_0'], data['y_1'],  data['y_2']
+    mu_0, mu_1, mu_2 =  data['mu_0'], data['mu_1'], data['mu_2']
+    #return t.values.reshape(-1, 1), y, y0, y1, y2, mu_0, mu_1, mu_2
+    return t.values.reshape(-1, 1), y.values, y0.values, y1.values, y2.values, mu_0.values, mu_1.values, mu_2.values
+
+
+def load_ihdp_tri(return_ate=True, return_ites=True):
+    d={}
+    d['w'] = load_and_format_covariates('/home/bvelasco/realcause/datasets/ihdp_tri.csv')
+    t, y, y0, y1, y2, mu_0, mu_1, mu_2 = load_all_other_vars('/home/bvelasco/realcause/datasets/ihdp_tri.csv')
+
+    d['t'] = t
+    d['y'] = y
+
+    d['y_0'] = y0
+    d['y_1'] = y1
+    d['y_2'] = y2
+
+    d['mu_0'] = mu_0
+    d['mu_1'] = mu_1
+    d['mu_2'] = mu_2
+
+    if return_ites:
+        ites = [y1-y0, y2-y1]
+        d['ites'] = ites
+
+    if return_ate:
+        ate = [y1.mean()-y0.mean(), y2.mean()-y1.mean()]
+        d['ate'] = ate
+
+    return d
+
+
+'''def load_ihdp_tri(split='all', i=0, observe_counterfactuals=False, return_ites=False,
+              return_ate=False, dataroot=None):
+    """
+        Load a single instance of the IHDP dataset
+
+        :param split: 'train', 'test', or 'both' (the default IHDP split is 90/10)
+        :param i: dataset instance (0 <= i < 1000)
+        :param observe_counterfactuals: if True, return double-sized dataset with
+            both y0 (first half) and y1 (second half) observed
+        :param return_ites: if True, return ITEs
+        :param return_ate: if True, return ATE
+        :return: dictionary of results
+        """
+    if 0 <= i < 100:
+        n_realizations = 100
+    elif 100 <= i < 1000:
+        n_realizations = 1000
+        i = i - 100
+    else:
+        raise ValueError('Invalid i: {} ... Valid i: 0 <= i < 1000'.format(i))
+
+    Tri = True
+    if Tri:
+        n_realizations = 1
+
+    if split == 'all':
+        train, test = load_ihdp_tri_datasets(split=split, n_realizations=n_realizations,
+                                         dataroot=dataroot)
+    else:
+        data = load_ihdp_tri_datasets(split=split, n_realizations=n_realizations,
+                                  dataroot=dataroot)
+
+    print('Here')
+    print(train)
+    ws = []
+    ts = []
+    y0s = []
+    y1s = []
+    y2s = []
+    itess10 = []
+    itess20 = []
+    #datasets = [train.f, test.f] if split == 'all' else [data.f]
+    datasets = [train, test] if split == 'all' else [data]
+    for dataset in datasets:
+        w = dataset.x[:, :, i]
+        t = dataset.t[:, i]
+        y0 = dataset.y0[:, i]
+        y1 = dataset.y1[:, i]
+        y2 = dataset.y2[:, i]
+        ites10 = dataset.mu1[:, i] - dataset.mu0[:, i]
+        ites20 = dataset.mu2[:, i] - dataset.mu0[:, i]
+
+        ws.append(w)
+        ts.append(t)
+        y0s.append(y0)
+        y1s.append(y1)
+        y2s.append(y2)
+        itess10.append(ites10)
+        itess20.append(ites20)
+
+    w = np.vstack(ws)
+    t = np.concatenate(ts)
+    y0 = np.concatenate(y0)
+    y1 = np.concatenate(y1)
+    y2 = np.concatenate(y2)
+    ites10 = np.concatenate(itess10)
+    ites20 = np.concatenate(itess20)
+    ate10 = np.mean(ites10)
+    ate20 = np.mean(ites20)
+
+    d = {}
+    if observe_counterfactuals:
+        d['w'] = np.vstack([w, w.copy()])
+        d['t'] = np.concatenate([t, np.logical_not(t.copy()).astype(int)])
+        d['ys'] = np.concatenate([y0, y1, y2])
+        ites = np.concatenate([ites10, ites20])  # comment if you don't want duplicates
+    else:
+        d['w'] = w
+        d['t'] = t
+        d['y0'] = y0
+        d['y1'] = y1
+        d['y2'] = y2
+
+
+    if return_ites:
+        d['ite10'] = ites10
+        d['ites20'] = ites20
+
+    if return_ate:
+        d['ate10'] = ate10
+        d['ate20'] = ate20
+
+
+    print('Im here')
+    print(d)
+    return d
+
+def load_ihdp_tri_datasets(split='train', n_realizations=1, dataroot=None):
+
+    if split.lower() not in SPLIT_OPTIONS:
+        raise ValueError('Invalid "split" option {} ... valid options: {}'
+                         .format(split, SPLIT_OPTIONS))
+    if isinstance(n_realizations, str):
+        n_realizations = int(n_realizations)
+    if n_realizations not in N_REALIZATIONS_OPTIONS:
+        raise ValueError('Invalid "n_realizations" option {} ... valid options: {}'
+                         .format(n_realizations, N_REALIZATIONS_OPTIONS))
+    #if n_realizations == 100:
+    if split == 'train' or split == 'all':
+        data = np.genfromtxt(os.path.join(dataroot,'ihdp_tri.csv'), delimiter=',')
+        train = data
+    if split == 'test' or split == 'all':
+        data = np.genfromtxt(os.path.join(dataroot, 'ihdp_tri.csv'), delimiter=',')
+        test = data
+    #elif n_realizations == 1000:
+    if split == 'train' or split == 'all':
+        data = np.genfromtxt(os.path.join(dataroot, 'ihdp_tri.csv'), delimiter=',')
+        train = data
+    if split == 'test' or split == 'all':
+        data = np.genfromtxt(os.path.join(dataroot, 'ihdp_tri.csv'), delimiter=',')
+        test = data
+
+    if split == 'train':
+        return train
+    elif split == 'test':
+        return test
+    elif split == 'all':
+        return train, test
+'''
 
 
 def load_ihdp(split='all', i=0, observe_counterfactuals=False, return_ites=False,

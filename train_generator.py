@@ -6,7 +6,7 @@ import torch
 import gpytorch
 from data.lalonde import load_lalonde
 from data.lbidd import load_lbidd
-from data.ihdp import load_ihdp
+from data.ihdp import load_ihdp, load_ihdp_tri
 from data.twins import load_twins
 from models import TarNet, preprocess, TrainingParams, MLPParams, LinearModel, GPModel, TarGPModel, GPParams
 from models import distributions
@@ -51,6 +51,11 @@ def get_data(args):
     elif data_name == "twins":
         d = load_twins(dataroot=args.dataroot)
         w, t, y = d["w"], d["t"], d["y"]
+    elif data_name == "ihdp_tri":
+        d = load_ihdp_tri(return_ate=True, return_ites=True)
+        w, t, y = d["w"], d["t"], d["y"] #(d["y"], d['y_0'], d['y_1'], d['y_2'])
+        ites = d['ites']
+        ate = d['ate']
     else:
         raise (Exception("dataset {} not implemented".format(args.data)))
 
@@ -167,11 +172,18 @@ def main(args, save_args=True, log_=True):
             activation=getattr(torch.nn, args.activation)(),
         )
         logger.info(mlp_params.__dict__)
+        '''network_params = dict(
+            mlp_params_w=mlp_params,
+            mlp_params_t_w=mlp_params,
+            mlp_params_y0_w=mlp_params,
+            mlp_params_y1_w=mlp_params,
+        )'''
         network_params = dict(
             mlp_params_w=mlp_params,
             mlp_params_t_w=mlp_params,
             mlp_params_y0_w=mlp_params,
             mlp_params_y1_w=mlp_params,
+            mlp_params_y2_w=mlp_params
         )
     elif args.model_type == 'linear':
         Model = LinearModel
@@ -206,7 +218,7 @@ def main(args, save_args=True, log_=True):
     model = Model(w, t, y,
                   training_params=training_params,
                   network_params=network_params,
-                  binary_treatment=True, outcome_distribution=distribution,
+                  binary_treatment=False, multivalued_treatment=True, outcome_distribution=distribution,
                   outcome_min=outcome_min,
                   outcome_max=outcome_max,
                   train_prop=args.train_prop,
@@ -244,7 +256,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="causal-gen")
 
     # dataset
-    parser.add_argument("--data", type=str, default="lalonde")  # TODO: fix choices
+    parser.add_argument("--data", type=str, default="ihdp_tri")  # TODO: fix choices
     parser.add_argument(
         "--dataroot", type=str, default="datasets"
     )  # TODO: do we need it?
@@ -259,7 +271,7 @@ def get_args():
                         choices=['tarnet', 'linear', 'gp', 'targp'])  # TODO: renaming tarnet to be dragonnet
 
     # distribution of outcome (y)
-    parser.add_argument('--dist', type=str, default='FactorialGaussian',
+    parser.add_argument('--dist', type=str, default='FactorialGaussianMulti',
                         choices=distributions.BaseDistribution.dist_names)
     parser.add_argument("--dist_args", type=str, default=list(), nargs="+")
     parser.add_argument("--atoms", type=float, default=list(), nargs="+")
@@ -277,7 +289,7 @@ def get_args():
     parser.add_argument("--var_dist", type=str, default="MeanFieldVariationalDistribution",
                         choices=[vd for vd in gpytorch.variational.__all__ if 'VariationalDistribution' in vd])
     parser.add_argument("--num_tasks", type=int, default=32,
-                        help='number of latent variables for the GP atom softmax classifier')
+                        help='nucmber of latent variables for the GP atom softmax classifier')
 
     # training params
     parser.add_argument("--lr", type=float, default=0.001)

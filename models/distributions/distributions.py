@@ -121,6 +121,46 @@ def exponential_sampler(log_lambda):
     # F^-1(u) = - log(1-u) / lambda
     return - torch.log(1 - torch.rand_like(log_lambda) + 1e-8) / (torch.exp(log_lambda) + 1e-8)
 
+#######################################################################################################################
+def log_normal_multi(x, mean, log_var, eps=0.00001):
+    print('todo')
+    z = - 0.5 * Log2PI
+    return - (x - mean) ** 2 / (2. * torch.exp(log_var) + eps) - log_var / 2. + z
+
+def log_multinoulli(x, logit):
+    print('todo')
+    x = x.reshape(-1,1).flatten().long()
+    return - F.cross_entropy(logit, x, reduction='none').sum(-1)
+
+def multinoulli_sampler(logit, overlap=1):
+    """
+    Sample (treatment vector) from bernoulli.
+
+    :param logit: p = sigmoid(logit)
+    :param overlap: if 1, leave treatment untouched;
+        if 0, push p(T = 1 | w) to 0 for all w where p(T = 1 | w) < 0.5 and
+        and push p(T = 1 | w) to 1 for all w where p(T = 1 | w) >= 0.5
+        if 0 < overlap < 1, do a linear interpolation of the above
+    :return: sampled treatment
+    """
+    print('todo')
+    p = torch.sigmoid(logit).float().data.cpu().numpy()
+
+    assert 0 <= overlap <= 1
+    if overlap < 1:
+        likely_treated = p >= 0.5
+        likely_control = np.logical_not(likely_treated)
+        p = likely_treated * (overlap * p + (1 - overlap) * 1) + \
+            likely_control * (overlap * p + (1 - overlap) * 0)
+
+    t = p > np.random.rand(*p.shape)
+
+    return t.astype('float32')
+
+def gaussian_sampler_multi(mean, log_var):
+    print('todo')
+    sigma = torch.exp(0.5*log_var)
+    return torch.randn(*mean.shape) * sigma + mean
 
 class BaseDistribution(object):
     """Distribution with batchified likelihood function and sampling function"""
@@ -149,6 +189,34 @@ class BaseDistribution(object):
     def mean(self, params):
         raise NotImplementedError
 
+class Multinoulli(BaseDistribution):
+    def likelihood(self, x, params):
+        return log_multinoulli(x, params)
+
+    def sample(self, params, overlap=1):
+        return multinoulli_sampler(params)
+
+    @property
+    def num_params(self):
+        return 1
+
+    def mean(self, params):
+        return torch.sigmoid(params)
+
+class FactorialGaussianMulti(BaseDistribution):
+    def likelihood(self, x, params):
+        return log_normal_multi(x, *torch.chunk(params, chunks=2, dim=1)).sum(-1)
+
+    def sample(self, params):
+        return gaussian_sampler_multi(*torch.chunk(params, chunks=2, dim=1)).data.cpu().numpy()
+
+    @property
+    def num_params(self):
+        return 2
+
+    def mean(self, params):
+        return torch.chunk(params, chunks=2, dim=1)[0]
+#######################################################################################################################
 
 class Bernoulli(BaseDistribution):
     def likelihood(self, x, params):

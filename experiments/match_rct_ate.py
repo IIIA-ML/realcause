@@ -32,18 +32,9 @@ else:
     raise(Exception('dataset {} not implemented'.format(dataset)))
 
 
-mlp = MLP(w, t, y,
-          training_params=training_params,
-          mlp_params_y_tw=mlp_params_y_tw,
-          binary_treatment=True, outcome_distribution=dist,
-          outcome_min=0.0, outcome_max=1.0,
-          train_prop=0.5,
-          val_prop=0.1,
-          test_prop=0.4,
-          seed=1,
-          early_stop=early_stop,
-          ignore_w=ignore_w,
-          w_transform=preprocess.Standardize, y_transform=preprocess.Normalize)
+mlp = MLP(w, t, y, seed=1, training_params=training_params, binary_treatment=True, outcome_distribution=dist,
+          outcome_min=0.0, outcome_max=1.0, train_prop=0.5, val_prop=0.1, test_prop=0.4, early_stop=early_stop,
+          ignore_w=ignore_w, w_transform=preprocess.Standardize, y_transform=preprocess.Normalize)
 
 mlp.train()
 

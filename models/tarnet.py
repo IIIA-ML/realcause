@@ -10,6 +10,7 @@ _DEFAULT_TARNET = dict(
     mlp_params_t_w=MLPParams(),
     mlp_params_y0_w=MLPParams(),
     mlp_params_y1_w=MLPParams(),
+    mlp_params_y2_w=MLPParams(),
 )
 
 
@@ -20,15 +21,18 @@ class TarNet(MLP):
         self.MLP_params_t_w = self.network_params['mlp_params_t_w']
         self.MLP_params_y0_w = self.network_params['mlp_params_y0_w']
         self.MLP_params_y1_w = self.network_params['mlp_params_y1_w']
+        self.MLP_params_y2_w = self.network_params['mlp_params_y2_w']
 
-        output_multiplier_t = 1 if self.binary_treatment else 2
+        output_multiplier_t = 1 if self.binary_treatment else 3
         self._mlp_w = self._build_mlp(self.dim_w, self.MLP_params_w.dim_h, self.MLP_params_w, 1)
-        self._mlp_t_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_t, self.MLP_params_t_w, output_multiplier_t)
+        self._mlp_t_w = self._build_mlp_t(self.MLP_params_w.dim_h, self.dim_t, self.MLP_params_t_w, output_multiplier_t)
         self._mlp_y0_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y0_w,
                                          self.outcome_distribution.num_params)
         self._mlp_y1_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y1_w,
                                          self.outcome_distribution.num_params)
-        self.networks = [self._mlp_w, self._mlp_t_w, self._mlp_y0_w, self._mlp_y1_w]
+        self._mlp_y2_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y2_w,
+                                         self.outcome_distribution.num_params)
+        self.networks = [self._mlp_w, self._mlp_t_w, self._mlp_y0_w, self._mlp_y1_w, self._mlp_y2_w]
 
     def mlp_w(self, w):
         return self.MLP_params_w.activation(self._mlp_w(w))
@@ -36,7 +40,7 @@ class TarNet(MLP):
     def mlp_t_w(self, w):
         return self._mlp_t_w(self.mlp_w(w))
 
-    def mlp_y_tw(self, wt, ret_counterfactuals=False):
+    def mlp_y_tw(self, wt, ret_counterfactuals=True):
         """
         :param wt: concatenation of w and t
         :return: parameter of the conditional distribution p(y|t,w)
@@ -45,10 +49,13 @@ class TarNet(MLP):
         w = self.mlp_w(w)
         y0 = self._mlp_y0_w(w)
         y1 = self._mlp_y1_w(w)
+        y2 = self._mlp_y2_w(w)
         if ret_counterfactuals:
-            return y0, y1
+            return y0, y1, y2
         else:
-            return y0 * (1 - t) + y1 * t
+            t_onehot = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten())
+            y_ = [y0, y1, y2] * t_onehot
+            return y_
 
 
     def _get_loss(self, w, t, y):
@@ -60,7 +67,9 @@ class TarNet(MLP):
 
         y0 = self._mlp_y0_w(w_)
         y1 = self._mlp_y1_w(w_)
-        y_ = y0 * (1 - t) + y1 * t
+        y2 = self._mlp_y2_w(w_)
+        t_onehot  = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten())
+        y_ = [y0, y1, y2] * t_onehot
 
         loss_t = self.treatment_distribution.loss(t, t_)
         loss_y = self.outcome_distribution.loss(y, y_)
