@@ -273,10 +273,12 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
             # note: input to the model need to be transformed
             w = self.sample_w(untransform=False)
 
-        y0, y1 = self._sample_y(t, w, ret_counterfactuals=True)
+        y0, y1, y2 = self._sample_y(t, w, ret_counterfactuals=True)
         if untransform:
             y0 = self.y_transform.untransform(y0)
             y1 = self.y_transform.untransform(y1)
+            y2 = self.y_transform.untransform(y2)
+
 
         if deg_hetero == 1.0 and causal_effect_scale == None:  # don't change heterogeneity or causal effect size
             pass

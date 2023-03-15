@@ -68,8 +68,16 @@ class TarNet(MLP):
         y0 = self._mlp_y0_w(w_)
         y1 = self._mlp_y1_w(w_)
         y2 = self._mlp_y2_w(w_)
-        t_onehot  = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten())
-        y_ = [y0, y1, y2] * t_onehot
+
+        t_onehot  = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten()).type(torch.BoolTensor)
+
+        mean = torch.concatenate([y0[:, 0].reshape(-1, 1), y1[:, 0].reshape(-1, 1), y2[:, 0].reshape(-1, 1)], axis=1)
+        mean_ = torch.masked_select(mean, t_onehot)
+
+        var = torch.concatenate([y0[:, 1].reshape(-1, 1), y1[:, 1].reshape(-1, 1), y2[:, 1].reshape(-1, 1)], axis=1)
+        var_ = torch.masked_select(var, t_onehot)
+
+        y_ = torch.concatenate([mean_.reshape(-1, 1), var_.reshape(-1, 1)], axis=1)
 
         loss_t = self.treatment_distribution.loss(t, t_)
         loss_y = self.outcome_distribution.loss(y, y_)
