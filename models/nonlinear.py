@@ -241,7 +241,7 @@ class MLP(BaseGenModel):
                         #       without overwriting the saved model
 
                 if c % self.training_params.plot_every == 0:
-                    with eval_ctx(self):
+                    '''with eval_ctx(self):
                         plots = self.plot_ty_dists(verbose=False)
                     for plot in plots:
                         try:
@@ -250,7 +250,7 @@ class MLP(BaseGenModel):
                             title = plot.axes[0].get_title()
                         img = fig2img(plot)
                         if comet_exp is not None:
-                            comet_exp.log_image(img, name=title)
+                            comet_exp.log_image(img, name=title)'''
                         
                 if c % self.training_params.p_every == 0:
                     with eval_ctx(self):
@@ -288,13 +288,15 @@ class MLP(BaseGenModel):
             w = np.zeros_like(w)
         wt = np.concatenate([w, t], 1)
         if ret_counterfactuals:
-            y0_, y1_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=True)
+            y0_, y1_, y2_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=True)
             y0_samples = self.outcome_distribution.sample(y0_)
             y1_samples = self.outcome_distribution.sample(y1_)
+            y2_samples = self.outcome_distribution.sample(y2_)
             if self.outcome_min is not None or self.outcome_max is not None:
                 y0_samples = np.clip(y0_samples, self.outcome_min, self.outcome_max)
                 y1_samples = np.clip(y1_samples, self.outcome_min, self.outcome_max)
-            return y0_samples, y1_samples
+                y2_samples = np.clip(y2_samples, self.outcome_min, self.outcome_max)
+            return y0_samples, y1_samples, y2_samples
         else:
             y_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=False)
             y_samples = self.outcome_distribution.sample(y_)

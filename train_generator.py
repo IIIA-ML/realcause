@@ -247,7 +247,7 @@ def main(args, save_args=True, log_=True):
         with open(os.path.join(args.saveroot, "all_runs.txt"), "w") as file:
             file.write(json.dumps(all_runs))
 
-        model.plot_ty_dists()
+        #model.plot_ty_dists()
 
     return model
 

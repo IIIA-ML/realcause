@@ -146,17 +146,18 @@ def multinoulli_sampler(logit, overlap=1):
     print('todo')
     p = torch.softmax(logit,dim=1).float().data.cpu().numpy()
 
-
     assert 0 <= overlap <= 1
     if overlap < 1:
+        # MODIFY!
+        # TODO
         likely_treated = p >= 0.5
         likely_control = np.logical_not(likely_treated)
         p = likely_treated * (overlap * p + (1 - overlap) * 1) + \
             likely_control * (overlap * p + (1 - overlap) * 0)
 
-    t = p > np.random.rand(*p.shape)
+    t = p.argmax(axis=1)
 
-    return t.astype('float32')
+    return t.astype('float32').reshape(-1,1)
 
 def gaussian_sampler_multi(mean, log_var):
     print('todo')
