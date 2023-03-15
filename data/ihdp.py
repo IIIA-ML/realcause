@@ -23,17 +23,10 @@ References:
 
 import numpy as np
 import pandas as pd
-import os
 from utils import download_dataset, unzip
-
-IHDP_100_TRAIN_URL = 'http://www.fredjo.com/files/ihdp_npci_1-100.train.npz'
-IHDP_100_TEST_URL = 'http://www.fredjo.com/files/ihdp_npci_1-100.test.npz'
-IHDP_1000_TRAIN_URL = 'http://www.fredjo.com/files/ihdp_npci_1-1000.train.npz.zip'
-IHDP_1000_TEST_URL = 'http://www.fredjo.com/files/ihdp_npci_1-1000.test.npz.zip'
 
 SPLIT_OPTIONS = {'train', 'test', 'all'}
 N_REALIZATIONS_OPTIONS = {1, 100, 1000}
-
 
 def load_and_format_covariates(file_path):
 
@@ -52,7 +45,6 @@ def load_all_other_vars(file_path):
     mu_0, mu_1, mu_2 =  data['mu_0'], data['mu_1'], data['mu_2']
     #return t.values.reshape(-1, 1), y, y0, y1, y2, mu_0, mu_1, mu_2
     return t.values.reshape(-1, 1), y.values, y0.values, y1.values, y2.values, mu_0.values, mu_1.values, mu_2.values
-
 
 def load_ihdp_tri(return_ate=True, return_ites=True):
     d={}

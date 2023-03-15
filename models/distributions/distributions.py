@@ -123,12 +123,12 @@ def exponential_sampler(log_lambda):
 
 #######################################################################################################################
 def log_normal_multi(x, mean, log_var, eps=0.00001):
-    #print('todo')
+    #print('log_normal_multi')
     z = - 0.5 * Log2PI
     return - (x - mean) ** 2 / (2. * torch.exp(log_var) + eps) - log_var / 2. + z
 
 def log_multinoulli(x, logit):
-    #print('todo')
+    #print('log_multinoulli')
     x = x.reshape(-1,1).flatten().long()
     return - F.cross_entropy(logit, x, reduction='none').sum(-1)
 
@@ -143,7 +143,7 @@ def multinoulli_sampler(logit, overlap=1):
         if 0 < overlap < 1, do a linear interpolation of the above
     :return: sampled treatment
     """
-    print('todo')
+    #print('multinoulli_sampler')
     p = torch.softmax(logit,dim=1).float().data.cpu().numpy()
 
     assert 0 <= overlap <= 1
@@ -160,7 +160,7 @@ def multinoulli_sampler(logit, overlap=1):
     return t.astype('float32').reshape(-1,1)
 
 def gaussian_sampler_multi(mean, log_var):
-    print('todo')
+    #print('gaussian_sampler_multi')
     sigma = torch.exp(0.5*log_var)
     return torch.randn(*mean.shape) * sigma + mean
 

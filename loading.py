@@ -56,6 +56,7 @@ def load_from_folder(dataset, checkpoint_path="./GenModelCkpts.zip"):
     checkpoint_path = Path(checkpoint_path).resolve()
     root_dir = checkpoint_path.parent
     checkpoint_dir = root_dir / checkpoint_path.stem
+    #print(checkpoint_dir)
     if not checkpoint_dir.is_dir():
         with zipfile.ZipFile(checkpoint_path, "r") as zip_ref:
             zip_ref.extractall()
@@ -63,7 +64,7 @@ def load_from_folder(dataset, checkpoint_path="./GenModelCkpts.zip"):
     dataset_roots = os.listdir(checkpoint_dir)
     dataset_stem = dataset.split("_")[0]
     subdata_stem = dataset.split("_")[-1]
-
+    #print(dataset_roots)
     assert dataset_stem in dataset_roots
     subdatasets = os.listdir(checkpoint_dir / dataset_stem)
     assert subdata_stem in subdatasets
@@ -89,6 +90,7 @@ def load_from_folder(dataset, checkpoint_path="./GenModelCkpts.zip"):
     args.comet = False
 
     # Now load model
+    print(args.saveroot)
     model, args = load_gen(saveroot=str(args.saveroot), dataroot="./datasets")
 
     return model, args

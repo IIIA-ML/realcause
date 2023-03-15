@@ -236,10 +236,12 @@ def main(args, save_args=True, log_=True):
 
     # TODO GPU support
     if args.train:
+        print('training')
         model.train(print_=logger.info, comet_exp=exp)
 
     # evaluation
     if args.eval:
+        print('evaluation')
         summary, all_runs = evaluate(args, model)
         logger.info(summary)
         with open(os.path.join(args.saveroot, "summary.txt"), "w") as file:
@@ -249,6 +251,8 @@ def main(args, save_args=True, log_=True):
 
         #model.plot_ty_dists()
 
+
+
     return model
 
 
@@ -257,22 +261,17 @@ def get_args():
 
     # dataset
     parser.add_argument("--data", type=str, default="ihdp_tri")  # TODO: fix choices
-    parser.add_argument(
-        "--dataroot", type=str, default="datasets"
-    )  # TODO: do we need it?
+    parser.add_argument("--dataroot", type=str, default="datasets")  # TODO: do we need it?
     parser.add_argument("--saveroot", type=str, default="save")
-    parser.add_argument("--train", type=eval, default=True, choices=[True, False])
+    parser.add_argument("--train", type=eval, default=False, choices=[True, False])
     parser.add_argument("--eval", type=eval, default=True, choices=[True, False])
-    parser.add_argument('--overwrite_reload', type=str, default='',
-                        help='secondary folder name of an experiment')  # TODO: for model loading
+    parser.add_argument('--overwrite_reload', type=str, default='', help='secondary folder name of an experiment')  # TODO: for model loading
 
     # model type
-    parser.add_argument('--model_type', type=str, default='tarnet',
-                        choices=['tarnet', 'linear', 'gp', 'targp'])  # TODO: renaming tarnet to be dragonnet
+    parser.add_argument('--model_type', type=str, default='tarnet', choices=['tarnet', 'linear', 'gp', 'targp'])  # TODO: renaming tarnet to be dragonnet
 
     # distribution of outcome (y)
-    parser.add_argument('--dist', type=str, default='FactorialGaussianMulti',
-                        choices=distributions.BaseDistribution.dist_names)
+    parser.add_argument('--dist', type=str, default='FactorialGaussianMulti', choices=distributions.BaseDistribution.dist_names)
     parser.add_argument("--dist_args", type=str, default=list(), nargs="+")
     parser.add_argument("--atoms", type=float, default=list(), nargs="+")
 
@@ -282,19 +281,15 @@ def get_args():
     parser.add_argument("--activation", type=str, default="ReLU")
 
     # architecture for gp
-    parser.add_argument("--kernel_t", type=str, default="RBFKernel",
-                        choices=gpytorch.kernels.__all__)
-    parser.add_argument("--kernel_y", type=str, default="RBFKernel",
-                        choices=gpytorch.kernels.__all__)
-    parser.add_argument("--var_dist", type=str, default="MeanFieldVariationalDistribution",
-                        choices=[vd for vd in gpytorch.variational.__all__ if 'VariationalDistribution' in vd])
-    parser.add_argument("--num_tasks", type=int, default=32,
-                        help='nucmber of latent variables for the GP atom softmax classifier')
+    parser.add_argument("--kernel_t", type=str, default="RBFKernel", choices=gpytorch.kernels.__all__)
+    parser.add_argument("--kernel_y", type=str, default="RBFKernel", choices=gpytorch.kernels.__all__)
+    parser.add_argument("--var_dist", type=str, default="MeanFieldVariationalDistribution", choices=[vd for vd in gpytorch.variational.__all__ if 'VariationalDistribution' in vd])
+    parser.add_argument("--num_tasks", type=int, default=32, help='nucmber of latent variables for the GP atom softmax classifier')
 
     # training params
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch_size", type=int, default=64)
-    parser.add_argument("--num_epochs", type=int, default=100)
+    parser.add_argument("--num_epochs", type=int, default=200)
     parser.add_argument("--early_stop", type=eval, default=True, choices=[True, False])
     parser.add_argument("--patience", type=int)
 
@@ -302,10 +297,8 @@ def get_args():
     parser.add_argument("--grad_norm", type=float, default=float("inf"))
     parser.add_argument("--test_size", type=int)
 
-    parser.add_argument('--w_transform', type=str, default='Standardize',
-                        choices=preprocess.Preprocess.prep_names)
-    parser.add_argument('--y_transform', type=str, default='Normalize',
-                        choices=preprocess.Preprocess.prep_names)
+    parser.add_argument('--w_transform', type=str, default='Standardize',choices=preprocess.Preprocess.prep_names)
+    parser.add_argument('--y_transform', type=str, default='Normalize',choices=preprocess.Preprocess.prep_names)
     parser.add_argument("--train_prop", type=float, default=0.5)
     parser.add_argument("--val_prop", type=float, default=0.1)
     parser.add_argument("--test_prop", type=float, default=0.4)

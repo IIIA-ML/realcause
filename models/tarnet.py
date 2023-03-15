@@ -53,8 +53,9 @@ class TarNet(MLP):
         if ret_counterfactuals:
             return y0, y1, y2
         else:
-            t_onehot = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten())
-            y_ = [y0, y1, y2] * t_onehot
+            t_onehot = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten()).type(torch.BoolTensor)
+            y = torch.concatenate([y0[:, 0].reshape(-1, 1), y1[:, 0].reshape(-1, 1), y2[:, 0].reshape(-1, 1)], axis=1)
+            y_ = torch.masked_select(y, t_onehot)
             return y_
 
 
@@ -82,6 +83,7 @@ class TarNet(MLP):
         loss_t = self.treatment_distribution.loss(t, t_)
         loss_y = self.outcome_distribution.loss(y, y_)
         loss = loss_t + loss_y
+        #print(loss)
         return loss, loss_t, loss_y
 
 
