@@ -262,8 +262,8 @@ def get_args():
     # dataset
     parser.add_argument("--data", type=str, default="ihdp_tri")  # TODO: fix choices
     parser.add_argument("--dataroot", type=str, default="datasets")  # TODO: do we need it?
-    parser.add_argument("--saveroot", type=str, default="save")
-    parser.add_argument("--train", type=eval, default=False, choices=[True, False])
+    parser.add_argument("--saveroot", type=str, default="GenModelCkpts/ihdp_tri/ihdp_tri/save/")
+    parser.add_argument("--train", type=eval, default=True, choices=[True, False])
     parser.add_argument("--eval", type=eval, default=True, choices=[True, False])
     parser.add_argument('--overwrite_reload', type=str, default='', help='secondary folder name of an experiment')  # TODO: for model loading
 

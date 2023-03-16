@@ -1,7 +1,26 @@
+# MultiValued Real Cause
+
+Based on RealCause (ref), we extend this repo for the case of multi-valued treatment settings.
+
+ To train the algorithm in semi-synthetic data generated from ihdp (three-valued treatment), run:
+
+```
+python train_generator.py --data "ihdp_tri" --dataroot [path-to-ur-data-folder] --saveroot save \
+    --dist "FactorialGaussianMulti" --n_hidden_layers 1 --dim_h 64 --w_transform "Standardize" --y_transform "Normalize"
+```
+
+Then, to load the model and sample a three-valued dataset, run:
+
+```
+from loading import load_gen \
+model, args = load_gen()
+```
+
+<details>
+  <summary>RealCause</summary>
+
 # causal-benchmark
 Realistic benchmark for different causal inference methods. The realism comes from fitting generative models to data with an assumed causal structure. 
-
-# My comment
 
 ## Installation
 Once you've created a virtual environment (e.g. with conda, virtualenv, etc.) install the required packages:
@@ -236,4 +255,6 @@ univariate evaluation metrics (i.e. p values & nll; by default there will be `--
 ## Re-running our causal estimator experiments
 
 To re-run the causal estimator benchmarking in our paper, run [experiments/uai_experiments.py](https://github.com/bradyneal/causal-benchmark/blob/master/experiments/uai_experiments.py). To re-run our correlation analysis between causal and predictive metrics, run [experiments/uai_analysis.py](https://github.com/bradyneal/causal-benchmark/blob/master/experiments/uai_analysis.py).
- 
+
+
+</details>
