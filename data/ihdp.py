@@ -63,11 +63,11 @@ def load_ihdp_tri(return_ate=True, return_ites=True):
     d['mu_2'] = mu_2
 
     if return_ites:
-        ites = [y1-y0, y2-y1]
+        ites = [y1-y0, y2-y0]
         d['ites'] = ites
 
     if return_ate:
-        ate = [y1.mean()-y0.mean(), y2.mean()-y1.mean()]
+        ate = [y1.mean()-y0.mean(), y2.mean()-y0.mean()]
         d['ate'] = ate
 
     return d

@@ -262,7 +262,7 @@ def get_args():
     # dataset
     parser.add_argument("--data", type=str, default="ihdp_tri")  # TODO: fix choices
     parser.add_argument("--dataroot", type=str, default="datasets")  # TODO: do we need it?
-    parser.add_argument("--saveroot", type=str, default="GenModelCkpts/ihdp_tri/ihdp_tri/save/")
+    parser.add_argument("--saveroot", type=str, default="save")
     parser.add_argument("--train", type=eval, default=True, choices=[True, False])
     parser.add_argument("--eval", type=eval, default=True, choices=[True, False])
     parser.add_argument('--overwrite_reload', type=str, default='', help='secondary folder name of an experiment')  # TODO: for model loading
@@ -276,15 +276,15 @@ def get_args():
     parser.add_argument("--atoms", type=float, default=list(), nargs="+")
 
     # architecture for tarnet
-    parser.add_argument("--n_hidden_layers", type=int, default=1)
-    parser.add_argument("--dim_h", type=int, default=64)
+    parser.add_argument("--n_hidden_layers", type=int, default=2)
+    parser.add_argument("--dim_h", type=int, default=128)
     parser.add_argument("--activation", type=str, default="ReLU")
 
     # architecture for gp
     parser.add_argument("--kernel_t", type=str, default="RBFKernel", choices=gpytorch.kernels.__all__)
     parser.add_argument("--kernel_y", type=str, default="RBFKernel", choices=gpytorch.kernels.__all__)
     parser.add_argument("--var_dist", type=str, default="MeanFieldVariationalDistribution", choices=[vd for vd in gpytorch.variational.__all__ if 'VariationalDistribution' in vd])
-    parser.add_argument("--num_tasks", type=int, default=32, help='nucmber of latent variables for the GP atom softmax classifier')
+    parser.add_argument("--num_tasks", type=int, default=32, help='number of latent variables for the GP atom softmax classifier')
 
     # training params
     parser.add_argument("--lr", type=float, default=0.001)

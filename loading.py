@@ -6,6 +6,7 @@ import pandas as pd
 
 import torch
 from addict import Dict
+from torchsummary import summary
 
 from train_generator import get_args, main
 from consts import REALCAUSE_DATASETS_FOLDER, N_SAMPLE_SEEDS
@@ -49,6 +50,8 @@ def load_gen(saveroot='save', dataroot=None):
     state_dicts = torch.load(model.savepath)
     for state_dict, net in zip(state_dicts, model.networks):
         net.load_state_dict(state_dict)
+
+    #summary(model, (493,1))
     return model, args
 
 
