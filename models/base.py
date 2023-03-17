@@ -10,6 +10,9 @@ from models.preprocess import Preprocess, PlaceHolderTransform
 from plotting.plotting import compare_joints, compare_bivariate_marginals
 from utils import T, Y, to_np_vectors, to_np_vector, to_torch_variable, permutation_test, regular_round
 
+from data.ihdp import load_ihdp_tri
+
+
 MODEL_LABEL = "model"
 TRUE_LABEL = "true"
 T_MODEL_LABEL = "{} ({})".format(T, MODEL_LABEL)
@@ -158,7 +161,7 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
         self.t_test_transformed = self.t_transform.transform(self.t_test)
         self.y_test_transformed = self.y_transform.transform(self.y_test)
 
-    def get_data(self, transformed=False, dataset=TRAIN, verbose=True):
+    def get_data(self, transformed=False, dataset=TRAIN, verbose=True, check=False):
         """
         Get the specific dataset. Splits were determined in the constructor.
 
@@ -193,6 +196,8 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
         else:
             if verbose:
                 warnings.warn("untransformed")
+
+        #if check:
 
         return w, t, y
 
@@ -282,13 +287,16 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
 
         if deg_hetero == 1.0 and causal_effect_scale == None:  # don't change heterogeneity or causal effect size
             pass
-        else:   # change degree of heterogeneity and/or causal effect size
-            # degree of heterogeneity
+        else:   # TODO!
+                # change degree of heterogeneity and/or causal effect size
+                # degree of heterogeneity
             if deg_hetero != 1.0:
                 assert 0 <= deg_hetero < 1, f'deg_hetero not in [0, 1], got {deg_hetero}'
                 y1_mean = y1.mean()
                 y0_mean = y0.mean()
-                ate = y1_mean - y0_mean
+                y2_mean = y2.mean()
+                ate10 = y1_mean - y0_mean
+                ate20 = y2_mean - y0_mean
 
                 # calculate value to shrink either y1 or y0 (whichever is
                 # further from its mean) to when deg_hetero = 0
@@ -308,14 +316,22 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
 
             # size of causal effect
             if causal_effect_scale is not None:
+                # TODO!
                 ate = (y1 - y0).mean()
                 y1 = causal_effect_scale / ate * y1
                 y0 = causal_effect_scale / ate * y0
 
         if ret_counterfactuals:
-            return y0, y1
+            return y0, y1, y2
         else:
-            return y0 * (1 - t) + y1 * t
+            t_f = t.flatten().astype(int)
+            t_o = np.zeros((t_f.size, 3))
+            t_o[np.arange(t_f.size), t_f] = 1
+            y_conc = np.concatenate([y0.reshape(-1, 1), y1.reshape(-1, 1), y2.reshape(-1, 1)], axis=1)
+            if t_o.shape[1]==2:
+                print('here')
+            y_ = (y_conc * t_o).sum(1)
+            return y_
 
     def set_seed(self, seed=SEED):
         torch.manual_seed(seed)
@@ -350,7 +366,7 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
             w = self.w_transform.transform(w)
         t = self.sample_t(w, untransform=False, overlap=overlap)
         if ret_counterfactuals:
-            y0, y1 = self.sample_y(
+            y0, y1, y2 = self.sample_y(
                 t, w, untransform=False, causal_effect_scale=causal_effect_scale,
                 deg_hetero=deg_hetero, ret_counterfactuals=True
             )
@@ -358,7 +374,7 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
                 return (self.w_transform.untransform(w), self.t_transform.untransform(t),
                         (self.y_transform.untransform(y0), self.y_transform.untransform(y1)))
             else:
-                return w, t, (y0, y1)
+                return w, t, (y0, y1, y2)
         else:
             y = self.sample_y(t, w, untransform=False,
                               causal_effect_scale=causal_effect_scale,
@@ -379,14 +395,18 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
             t = np.full_like(self.t, t)
         return self.sample_y(t, w, causal_effect_scale=causal_effect_scale, deg_hetero=deg_hetero)
 
-    def ate(self, t1=1, t0=0, w=None, noisy=True, untransform=True, transform_t=True, n_y_per_w=100,
+    def ate(self, t1=1, t0=0, t2=2, w=None, noisy=True, untransform=True, transform_t=True, n_y_per_w=100,
             causal_effect_scale=None, deg_hetero=1.0):
-        return self.ite(t1=t1, t0=t0, w=w, noisy=noisy, untransform=untransform,
+        # TODO MVRC
+
+        return self.ite(t1=t1, t0=t0, t2=2, w=w, noisy=noisy, untransform=untransform,
                         transform_t=transform_t, n_y_per_w=n_y_per_w,
                         causal_effect_scale=causal_effect_scale,
                         deg_hetero=deg_hetero).mean()
 
     def noisy_ate(self, t1=1, t0=0, w=None, n_y_per_w=100, seed=None, transform_w=False):
+        # TODO MVRC
+
         if w is not None and transform_w:
             w = self.w_transform.transform(w)
 
@@ -412,9 +432,11 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
         # return self.ite(t1=t1, t0=t0, w=w, untransform=untransform,
         #                 transform_t=transform_t).mean()
 
-    def ite(self, t1=1, t0=0, w=None, t=None, untransform=True, transform_t=True, transform_w=True,
+    def ite(self, t1=1, t0=0, t2=2, w=None, t=None, untransform=True, transform_t=True, transform_w=True,
             estimand="all", noisy=True, seed=None, n_y_per_w=100,
             causal_effect_scale=None, deg_hetero=1.0):
+        # TODO MVRC
+
         if seed is not None:
             self.set_seed(seed)
         if w is None:
@@ -521,6 +543,8 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
 
     def get_univariate_quant_metrics(self, dataset=TRAIN, transformed=False, verbose=True,
                                      thin_model=None, thin_true=None, seed=None, n=None):
+        # TODO Double-check MVRC
+
         """
         Calculates quantitative metrics for the difference between p(t) and
         p_model(t) and the difference between p(y) and p_model(y)
@@ -695,3 +719,36 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
         results["Energy pval"] = energy.pval(matrix, n_permutations=n_permutations)
 
         return results
+
+    def check_outcomes_treatments(self, dataset=TRAIN, transformed=False, verbose=True,
+                                     thin_model=None, thin_true=None, seed=None):
+        """
+        Compute mean outcomes (both observable and ground truth) of real data and instantiated data.
+        """
+        _, t_model, y_model = to_np_vectors(
+            self.sample(seed=seed, untransform=(not transformed)),
+            thin_interval=thin_model
+        )
+
+        _, t_true, y_true = self.get_data(transformed=transformed, dataset=dataset, verbose=verbose)
+        t_true, y_true = to_np_vectors((t_true, y_true), thin_interval=thin_true)
+
+        # True
+        dataset_len = len(t_true)
+        t_0 = np.zeros((dataset_len, 1))
+        t_1 = np.ones((dataset_len, 1))
+        t_2 = 2 * np.ones((dataset_len, 1))
+        y_0m = self.sample_interventional(t_0)
+        y_1m = self.sample_interventional(t_1)
+        y_2m = self.sample_interventional(t_2)
+
+        y_0t = self.get_data(check=True)
+        y_1t = self.get_data(check=True)
+        y_2t = self.get_data(check=True)
+
+        # Biased
+        y_0obs = y_true[t_true==0]
+        y_1obs = y_true[t_true == 1]
+        y_2obs = y_true[t_true == 2]
+
+        return None

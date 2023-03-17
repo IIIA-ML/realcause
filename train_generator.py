@@ -101,6 +101,8 @@ def evaluate(args, model):
         t_pvals.append(uni_metrics["t_ks_pval"])
         y_pvals.append(uni_metrics["y_ks_pval"])
 
+    #model.check_outcomes_treatments(dataset="test")
+
     summary = OrderedDict()
 
     summary.update(nll=model.best_val_loss)
@@ -113,8 +115,8 @@ def evaluate(args, model):
     summary.update(q50_t_pval=np.percentile(t_pvals, 50))
     summary.update(q50_y_pval=np.percentile(y_pvals, 50))
 
-    summary.update(ate_exact=model.ate().item())
-    summary.update(ate_noisy=model.noisy_ate().item())
+    #summary.update(ate_exact=model.ate().item())
+    #summary.update(ate_noisy=model.noisy_ate().item())
 
     return summary, all_runs
 
@@ -249,8 +251,8 @@ def main(args, save_args=True, log_=True):
         with open(os.path.join(args.saveroot, "all_runs.txt"), "w") as file:
             file.write(json.dumps(all_runs))
 
-        #model.plot_ty_dists()
 
+        #model.plot_ty_dists()
 
 
     return model
@@ -288,7 +290,7 @@ def get_args():
 
     # training params
     parser.add_argument("--lr", type=float, default=0.001)
-    parser.add_argument("--batch_size", type=int, default=64)
+    parser.add_argument("--batch_size", type=int, default=200)
     parser.add_argument("--num_epochs", type=int, default=200)
     parser.add_argument("--early_stop", type=eval, default=True, choices=[True, False])
     parser.add_argument("--patience", type=int)

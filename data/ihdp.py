@@ -70,6 +70,7 @@ def load_ihdp_tri(return_ate=True, return_ites=True):
         ate = [y1.mean()-y0.mean(), y2.mean()-y0.mean()]
         d['ate'] = ate
 
+
     return d
 
 
