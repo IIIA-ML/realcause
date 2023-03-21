@@ -5,10 +5,6 @@ import json
 from addict import Dict
 from train_generator import get_data
 from loading import load_gen
-import numpy as np
-from collections import OrderedDict
-import time
-from tqdm import tqdm
 
 
 def generate_plots(

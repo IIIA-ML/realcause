@@ -43,6 +43,26 @@ def compare_joints(x1, y1, x2, y2, xlabel1=None, ylabel1=None, xlabel2=None, yla
         ax[0].set(xlabel=xlabel1, ylabel=ylabel1)
         sns.kdeplot(x2, y2, ax=ax[1], **kwargs)
         ax[1].set(xlabel=xlabel2, ylabel=ylabel2)
+
+    if n_uniq1 == 3 and n_uniq2 == 3:
+        f, ax = plt.subplots(1, 3, sharex=False, sharey=True, figsize=FIGSIZE)
+        if not np.array_equal(uniq1, [0, 1, 2]):
+            raise ValueError('Three-valued x1 that is not [0, 1, 2]: {}'.format(uniq1))
+        if not np.array_equal(uniq2, [0, 1, 2]):
+            raise ValueError('Three-valued x1 that is not [0, 1, 2]: {}'.format(uniq2))
+
+        compare_marginal_hists(y1[x1 == 0], y2[x2 == 0], label1=label1, label2=label2, ax=ax[0])
+        ax[0].legend()
+        ax[0].set(xlabel=ylabel, ylabel='p({} | {} = 0)'.format(ylabel, xlabel.upper()))
+
+        compare_marginal_hists(y1[x1 == 1], y2[x2 == 1], label1=label1, label2=label2, ax=ax[1])
+        ax[1].legend()
+        ax[1].set(xlabel=ylabel, ylabel='p({} | {} = 1)'.format(ylabel, xlabel.upper()))
+
+        compare_marginal_hists(y1[x1 == 2], y2[x2 == 2], label1=label1, label2=label2, ax=ax[2])
+        ax[2].legend()
+        ax[2].set(xlabel=ylabel, ylabel='p({} | {} = 2)'.format(ylabel, xlabel.upper()))
+
     else:
         raise ValueError('x1 and x2 have unexpected number of unique elements: {} and {}'
                          .format(n_uniq1, n_uniq2))
@@ -65,7 +85,7 @@ def compare_marginal_hists(x1, x2, label1=None, label2=None, ax=None):
         try:
             sns.histplot(x2, ax=ax, label=label2)
         except RuntimeError:
-            sns.histplot(x1, ax=ax, label=label1, kde_kws={'bw': 0.5})
+            sns.histplot(x2, ax=ax, label=label1, kde_kws={'bw': 0.5})
 
 
 def is_binary(x1, x2=None):
@@ -159,7 +179,7 @@ def save_and_show(f, save_fname, dir=DIR, test=False):
             save_fname = os.path.join(dir, save_fname)
         f.savefig(save_fname, bbox_inches='tight', dpi=DPI)
     
-    #plt.show()
+    plt.show()
     plt.close()
 
 

@@ -56,10 +56,11 @@ def get_data(args):
         w, t, y = d["w"], d["t"], d["y"] #(d["y"], d['y_0'], d['y_1'], d['y_2'])
         ites = d['ites']
         ate = d['ate']
+        true_ys = [d['y_0'], d['y_1'], d['y_2']]
     else:
         raise (Exception("dataset {} not implemented".format(args.data)))
 
-    return ites, ate, w, t, y
+    return ites, ate, w, t, y, true_ys
 
 
 def get_distribution(args):
@@ -101,7 +102,7 @@ def evaluate(args, model):
         t_pvals.append(uni_metrics["t_ks_pval"])
         y_pvals.append(uni_metrics["y_ks_pval"])
 
-    #model.check_outcomes_treatments(dataset="test")
+    check_results = model.check_outcomes_treatments(dataset="test")
 
     summary = OrderedDict()
 
@@ -114,6 +115,7 @@ def evaluate(args, model):
     summary.update(q30_y_pval=np.percentile(y_pvals, 30))
     summary.update(q50_t_pval=np.percentile(t_pvals, 50))
     summary.update(q50_y_pval=np.percentile(y_pvals, 50))
+    summary.update(check_results = check_results)
 
     #summary.update(ate_exact=model.ate().item())
     #summary.update(ate_noisy=model.noisy_ate().item())
@@ -134,7 +136,7 @@ def main(args, save_args=True, log_=True):
 
     # dataset
     logger.info(f"getting data: {args.data}")
-    ites, ate, w, t, y = get_data(args)
+    ites, ate, w, t, y, true_ys = get_data(args)
 
     # comet logging
     if args.comet:
@@ -144,7 +146,7 @@ def main(args, save_args=True, log_=True):
     else:
         exp = None
 
-    logger.info(f"ate: {ate}")
+    #logger.info(f"ate: {ate}")
 
     # distribution of outcome (y)
     distribution = get_distribution(args)
@@ -164,6 +166,7 @@ def main(args, save_args=True, log_=True):
 
     # model type
     additional_args = dict()
+    additional_args['true_ys'] = true_ys
     if args.model_type == 'tarnet':
         Model = TarNet
 
@@ -252,7 +255,7 @@ def main(args, save_args=True, log_=True):
             file.write(json.dumps(all_runs))
 
 
-        #model.plot_ty_dists()
+        model.plot_ty_dists()
 
 
     return model
@@ -291,7 +294,7 @@ def get_args():
     # training params
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch_size", type=int, default=200)
-    parser.add_argument("--num_epochs", type=int, default=200)
+    parser.add_argument("--num_epochs", type=int, default=100)
     parser.add_argument("--early_stop", type=eval, default=True, choices=[True, False])
     parser.add_argument("--patience", type=int)
 
