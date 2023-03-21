@@ -79,13 +79,13 @@ def compare_marginal_hists(x1, x2, label1=None, label2=None, ax=None):
         sns.histplot(x2, kde=False, ax=ax, label=label2)
     else:
         try:
-            sns.histplot(x1, ax=ax, label=label1)
+            sns.histplot(x1, bins=50, ax=ax, label=label1)
         except RuntimeError:
-            sns.histplot(x1, ax=ax, label=label1, kde_kws={'bw': 0.5})
+            sns.histplot(x1, ax=ax, bins=50, label=label1, kde_kws={'bw': 0.5})
         try:
-            sns.histplot(x2, ax=ax, label=label2)
+            sns.histplot(x2, ax=ax,bins=50, label=label2)
         except RuntimeError:
-            sns.histplot(x2, ax=ax, label=label1, kde_kws={'bw': 0.5})
+            sns.histplot(x2, ax=ax,bins=50, label=label1, kde_kws={'bw': 0.5})
 
 
 def is_binary(x1, x2=None):

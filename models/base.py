@@ -758,19 +758,19 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
 
         results = dict()
         results = {
-            'y0_obs': y_0obs.mean(),
-            'y0_mobs': y_0mobs.mean(),
-            'y1_obs': y_1obs.mean(),
-            'y1_mobs': y_1mobs.mean(),
-            'y2_obs': y_2obs.mean(),
-            'y2_mobs': y_2mobs.mean(),
+            'y0_obs': (y_0obs.mean(), y_0obs.std()),
+            'y0_mobs': (y_0mobs.mean(), y_0mobs.std()),
+            'y1_obs': (y_1obs.mean(), y_1obs.std()),
+            'y1_mobs': (y_1mobs.mean(), y_1mobs.std()),
+            'y2_obs': (y_2obs.mean(), y_2obs.std()),
+            'y2_mobs': (y_2mobs.mean(), y_2mobs.std()),
 
-            'y0_m': y_0m.mean(),
-            'y0_t': y_0t.mean(),
-            'y1_m': y_1m.mean(),
-            'y1_t': y_1t.mean(),
-            'y2_m': y_2m.mean(),
-            'y2_t': y_2t.mean()
+            'y0_m': (y_0m.mean(), y_0m.std()),
+            'y0_t': (y_0t.mean(), y_0t.std()),
+            'y1_m': (y_1m.mean(), y_1m.std()),
+            'y1_t': (y_1t.mean(), y_1t.std()),
+            'y2_m': (y_2m.mean(), y_2m.std()),
+            'y2_t': (y_2t.mean(), y_2t.std())
         }
 
         results_table_obs = pd.DataFrame({
@@ -789,8 +789,8 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
             'y1_m': y_1m,
             'y2_m': y_2m})
 
-        results_table_obs.to_csv('save/table_obs.csv')
-        results_table_true.to_csv('save/table_true.csv')
-        results_table_modeltrue.to_csv('save/table_model_true.csv')
+        #results_table_obs.to_csv('save/table_obs.csv')
+        #results_table_true.to_csv('save/table_true.csv')
+        #results_table_modeltrue.to_csv('save/table_model_true.csv')
 
         return results
