@@ -324,13 +324,13 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
                 y0 = causal_effect_scale / ate * y0
 
         if ret_counterfactuals:
-            return [y_dict['y{}'.format(i)][:,0].reshape(-1,1) for i in range(self.num_treatments)]
+            return [y_dict['y{}'.format(i)] for i in range(self.num_treatments)]
         else:
             t_f = t.flatten().astype(int)
             t_o = np.zeros((t_f.size, self.num_treatments))
             t_o[np.arange(t_f.size), t_f] = 1
             #y_conc = np.concatenate([y0.reshape(-1, 1), y1.reshape(-1, 1), y2.reshape(-1, 1)], axis=1)
-            y_conc = np.concatenate([y_dict['y{}'.format(i)][:,0].reshape(-1,1) for i in range(self.num_treatments)], axis=1)
+            y_conc = np.concatenate([y_dict['y{}'.format(i)] for i in range(self.num_treatments)], axis=1)
             if t_o.shape[1]==2:
                 print('here')
             y_ = (y_conc * t_o).sum(1)

@@ -175,7 +175,7 @@ class MLP(BaseGenModel):
         hidden_layers += [nn.Linear(dim_h, dim_y * output_multiplier)]
         return nn.Sequential(*hidden_layers)
 
-    def _build_mlp_t(self, dim_x, dim_t, MLP_params=MLPParams(), output_multiplier=3):
+    def _build_mlp_t(self, dim_x, dim_t, MLP_params=MLPParams(), output_multiplier=2):
         dim_h = MLP_params.dim_h
         hidden_layers = [nn.Linear(dim_x, dim_h), MLP_params.activation]
         for _ in range(MLP_params.n_hidden_layers - 1):
@@ -272,7 +272,6 @@ class MLP(BaseGenModel):
                 net.load_state_dict(params)
 
     def evaluate(self, data_loader):
-        print('Im in evaluate from MLP')
         loss = 0
         n = 0
 
@@ -295,7 +294,7 @@ class MLP(BaseGenModel):
 
             y_samples_ = {}
             for i in range(self.num_treatments):
-                y_samples_[i] = self.outcome_distribution.sample(y_dict_[i])
+                y_samples_['y{}'.format(i)] = self.outcome_distribution.sample(y_dict_[i])
 
             '''y0_, y1_, y2_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=True)
             y0_samples = self.outcome_distribution.sample(y0_)
@@ -304,12 +303,12 @@ class MLP(BaseGenModel):
 
             if self.outcome_min is not None or self.outcome_max is not None:
                 for i in range(self.num_treatments):
-                    y_samples_[i] = np.clip(y_samples_[i], self.outcome_min, self.outcome_max)
+                    y_samples_['y{}'.format(i)] = np.clip(y_samples_['y{}'.format(i)], self.outcome_min, self.outcome_max)
 
                 '''y0_samples = np.clip(y0_samples, self.outcome_min, self.outcome_max)
                 y1_samples = np.clip(y1_samples, self.outcome_min, self.outcome_max)
                 y2_samples = np.clip(y2_samples, self.outcome_min, self.outcome_max)'''
-            return [y_samples_[i] for i in range(self.num_treatments)]
+            return y_samples_
         else:
             y_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=False)
             y_samples = self.outcome_distribution.sample(y_)

@@ -32,7 +32,7 @@ class HydraNet(MLP):
         self._mlp_t_w = self._build_mlp_t(self.MLP_params_w.dim_h, self.dim_t, self.MLP_params_t_w, output_multiplier_t)
 
         for i in range(self.num_treatments):
-            setattr(self, '_mlp_y{}_w'.format(i), self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, getattr(self, 'MLP_params_y{}_w'.format(i)), 4)) #self.outcome_distribution.num_params))
+            setattr(self, '_mlp_y{}_w'.format(i), self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, getattr(self, 'MLP_params_y{}_w'.format(i)), self.outcome_distribution.num_params))
 
         '''self._mlp_y0_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y0_w,
                                          self.outcome_distribution.num_params)
@@ -63,11 +63,11 @@ class HydraNet(MLP):
         y1 = self._mlp_y1_w(w)
         y2 = self._mlp_y2_w(w)'''
         if ret_counterfactuals:
-            return [y_dict['y{}'.format(i)][:,0].reshape(-1,1) for i in range(self.num_treatments)]
+            return [y_dict['y{}'.format(i)] for i in range(self.num_treatments)]
         else:
             t_onehot = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten()).type(torch.BoolTensor)
             #y = torch.concatenate([y0[:, 0].reshape(-1, 1), y1[:, 0].reshape(-1, 1), y2[:, 0].reshape(-1, 1)], axis=1)
-            y = torch.concatenate([y_dict['y{}'.format(i)][:,0].reshape(-1,1) for i in range(self.num_treatments)], axis=1)
+            y = torch.concatenate([y_dict['y{}'.format(i)] for i in range(self.num_treatments)], axis=1)
             y_ = torch.masked_select(y, t_onehot)
             return y_
 

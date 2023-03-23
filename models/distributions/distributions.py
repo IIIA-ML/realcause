@@ -160,7 +160,7 @@ def multinoulli_sampler(logit, overlap=1):
     return t.astype('float32').reshape(-1,1)
 
 def gaussian_sampler_multi(mean, log_var):
-    #print('gaussian_sampler_multi')
+    # TODO Check
     sigma = torch.exp(0.5*log_var)
     return torch.randn(*mean.shape) * sigma + mean
 
