@@ -14,6 +14,11 @@ DIR = 'plots'
 DPI = 300
 
 
+def is_binary(x1, x2=None):
+    x1_is_binary = len(np.unique(x1)) == 2
+    return x1_is_binary if x2 is None else \
+        x1_is_binary and len(np.unique(x2)) == 2
+
 def compare_joints(x1, y1, x2, y2, xlabel1=None, ylabel1=None, xlabel2=None, ylabel2=None,
                    xlabel=None, ylabel=None, label1=None, label2=None, title=True,
                    name='', save_fname=None, test=False, kwargs=None):
@@ -37,14 +42,34 @@ def compare_joints(x1, y1, x2, y2, xlabel1=None, ylabel1=None, xlabel2=None, yla
         ax[1].legend()
         ax[1].set(xlabel=ylabel, ylabel='p({} | {} = 1)'.format(ylabel, xlabel.upper()))
 
-    elif n_uniq1 == len(x1) and n_uniq2 == len(x2):
+    else:
+        assert n_uniq1==n_uniq2
+        save_fname_static = save_fname
+        for i in range(n_uniq1):
+            save_fname = 'Y_{}_'.format(i) + save_fname_static
+            f, ax = plt.subplots(figsize=FIGSIZE)
+
+            compare_marginal_hists(y1[x1 == i], y2[x2 == i], label1=label1, label2=label2, ax=ax)
+            ax.legend()
+            ax.set(xlabel=ylabel, ylabel='p({} | {} = {})'.format(ylabel, xlabel.upper(), i))
+
+            # Old except
+            '''raise ValueError('x1 and x2 have unexpected number of unique elements: {} and {}'.format(n_uniq1, n_uniq2))'''
+
+            if title:
+                f.suptitle(name + 'Joint Kernel Density Estimate Plot of Y_{}'.format(i))
+            save_and_show(f, save_fname, test=test)
+
+    # Deprecateds
+
+    '''elif n_uniq1 == len(x1) and n_uniq2 == len(x2):
         f, ax = plt.subplots(1, 2, sharex=True, sharey=True, figsize=FIGSIZE)
         sns.kdeplot(x1, y1, ax=ax[0], **kwargs)
         ax[0].set(xlabel=xlabel1, ylabel=ylabel1)
         sns.kdeplot(x2, y2, ax=ax[1], **kwargs)
-        ax[1].set(xlabel=xlabel2, ylabel=ylabel2)
+        ax[1].set(xlabel=xlabel2, ylabel=ylabel2)'''
 
-    if n_uniq1 == 3 and n_uniq2 == 3:
+    '''elif n_uniq1 == 3 and n_uniq2 == 3:
         f, ax = plt.subplots(1, 3, sharex=False, sharey=True, figsize=FIGSIZE)
         if not np.array_equal(uniq1, [0, 1, 2]):
             raise ValueError('Three-valued x1 that is not [0, 1, 2]: {}'.format(uniq1))
@@ -61,14 +86,7 @@ def compare_joints(x1, y1, x2, y2, xlabel1=None, ylabel1=None, xlabel2=None, yla
 
         compare_marginal_hists(y1[x1 == 2], y2[x2 == 2], label1=label1, label2=label2, ax=ax[2])
         ax[2].legend()
-        ax[2].set(xlabel=ylabel, ylabel='p({} | {} = 2)'.format(ylabel, xlabel.upper()))
-
-    else:
-        raise ValueError('x1 and x2 have unexpected number of unique elements: {} and {}'
-                         .format(n_uniq1, n_uniq2))
-    if title:
-        f.suptitle(name + ' Joint Kernel Density Estimate Plots')
-    save_and_show(f, save_fname, test=test)
+        ax[2].set(xlabel=ylabel, ylabel='p({} | {} = 2)'.format(ylabel, xlabel.upper()))'''
 
     return f
 
@@ -87,11 +105,6 @@ def compare_marginal_hists(x1, x2, label1=None, label2=None, ax=None):
         except RuntimeError:
             sns.histplot(x2, ax=ax,bins=50, label=label1, kde_kws={'bw': 0.5})
 
-
-def is_binary(x1, x2=None):
-    x1_is_binary = len(np.unique(x1)) == 2
-    return x1_is_binary if x2 is None else \
-        x1_is_binary and len(np.unique(x2)) == 2
 
 
 def compare_marginal_qqplots(x1, x2, label1=None, label2=None, ax=None):
@@ -134,7 +147,7 @@ def compare_bivariate_marginals(x1, x2, y1, y2, xlabel=None, ylabel=None, label1
         save_and_show(f1, save_hist_fname, test=test)
         plots.append(f1)
 
-    if qqplot is 'both':
+    if qqplot=='both':
         f2, ax2 = plt.subplots(1, 2, figsize=FIGSIZE)
         if title:
             f2.suptitle(name + ' Marginal Q-Q Plots')
@@ -149,7 +162,7 @@ def compare_bivariate_marginals(x1, x2, y1, y2, xlabel=None, ylabel=None, label1
 
         save_and_show(f2, save_qq_fname, test=test)
         plots.append(f2)
-    elif qqplot is 'y' or qqplot:
+    elif qqplot=='y' or qqplot:
         f2, ax2 = plt.subplots(1, 1, figsize=SINGLE_FIGSIZE)
         compare_marginal_qqplots(y1, y2, ax=ax2,
                                  label1=get_quantile_label(label1, ylabel),

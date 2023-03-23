@@ -732,48 +732,61 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
         _, t_true, y_true = self.get_data(transformed=transformed, dataset=dataset, verbose=verbose)
         t_true, y_true = to_np_vectors((t_true, y_true), thin_interval=thin_true)
 
-        # True data, from model
         dataset_len = len(t_true)
-        t_0 = np.zeros((dataset_len, 1))
+        results = {}
+        for i in range(self.num_treatments):
+            # True data, from model
+            y_tm = self.sample_interventional(i*np.ones((dataset_len, 1)), self.w_test)
+            results['y{}_m'.format(i)] = (y_tm.mean(), y_tm.std())
+
+            # True data, from data
+            y_td = self.additional_args['true_ys'][i]
+            results['y{}_t'.format(i)] = (y_td.mean(), y_td.std())
+
+            # Observable data, from data
+            y_od = y_true[t_true == i]
+            results['y{}_obs'.format(i)] = (y_od.mean(), y_od.std())
+
+            # Observable data, from model
+            y_om = y_model[t_model == i]
+            results['y{}_mobs'.format(i)] = (y_om.mean(), y_om.std())
+
+        '''t_0 = np.zeros((dataset_len, 1))
         t_1 = np.ones((dataset_len, 1))
         t_2 = 2 * np.ones((dataset_len, 1))
         y_0m = self.sample_interventional(t_0, self.w_test)
         y_1m = self.sample_interventional(t_1, self.w_test)
         y_2m = self.sample_interventional(t_2, self.w_test)
 
-        # True data, from data
         y_0t = self.additional_args['true_ys'][0]
         y_1t = self.additional_args['true_ys'][1]
         y_2t = self.additional_args['true_ys'][2]
 
-        # Observable data, from data
         y_0obs = y_true[t_true == 0]
         y_1obs = y_true[t_true == 1]
         y_2obs = y_true[t_true == 2]
 
-        # Observable data, from model
         y_0mobs = y_model[t_model == 0]
         y_1mobs = y_model[t_model == 1]
-        y_2mobs = y_model[t_model == 2]
+        y_2mobs = y_model[t_model == 2]'''
 
-        results = dict()
-        results = {
-            'y0_obs': (y_0obs.mean(), y_0obs.std()),
-            'y0_mobs': (y_0mobs.mean(), y_0mobs.std()),
-            'y1_obs': (y_1obs.mean(), y_1obs.std()),
-            'y1_mobs': (y_1mobs.mean(), y_1mobs.std()),
-            'y2_obs': (y_2obs.mean(), y_2obs.std()),
-            'y2_mobs': (y_2mobs.mean(), y_2mobs.std()),
+        '''results = {
+                    'y0_obs': (y_0obs.mean(), y_0obs.std()),
+                    'y0_mobs': (y_0mobs.mean(), y_0mobs.std()),
+                    'y1_obs': (y_1obs.mean(), y_1obs.std()),
+                    'y1_mobs': (y_1mobs.mean(), y_1mobs.std()),
+                    'y2_obs': (y_2obs.mean(), y_2obs.std()),
+                    'y2_mobs': (y_2mobs.mean(), y_2mobs.std()),
 
-            'y0_m': (y_0m.mean(), y_0m.std()),
-            'y0_t': (y_0t.mean(), y_0t.std()),
-            'y1_m': (y_1m.mean(), y_1m.std()),
-            'y1_t': (y_1t.mean(), y_1t.std()),
-            'y2_m': (y_2m.mean(), y_2m.std()),
-            'y2_t': (y_2t.mean(), y_2t.std())
-        }
+                    'y0_m': (y_0m.mean(), y_0m.std()),
+                    'y0_t': (y_0t.mean(), y_0t.std()),
+                    'y1_m': (y_1m.mean(), y_1m.std()),
+                    'y1_t': (y_1t.mean(), y_1t.std()),
+                    'y2_m': (y_2m.mean(), y_2m.std()),
+                    'y2_t': (y_2t.mean(), y_2t.std())
+                }'''
 
-        results_table_obs = pd.DataFrame({
+        '''results_table_obs = pd.DataFrame({
             'y_model': y_model,
             'y_true': y_true,
             't_model': t_model,
@@ -791,6 +804,6 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
 
         #results_table_obs.to_csv('save/table_obs.csv')
         #results_table_true.to_csv('save/table_true.csv')
-        #results_table_modeltrue.to_csv('save/table_model_true.csv')
+        #results_table_modeltrue.to_csv('save/table_model_true.csv')'''
 
         return results

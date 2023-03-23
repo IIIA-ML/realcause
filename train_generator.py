@@ -248,7 +248,7 @@ def main(args, save_args=True, log_=True):
         with open(os.path.join(args.saveroot, "all_runs.txt"), "w") as file:
             file.write(json.dumps(all_runs))
 
-        #model.plot_ty_dists()
+        model.plot_ty_dists()
 
 
     return model
@@ -288,7 +288,7 @@ def get_args():
     # training params
     parser.add_argument("--lr", type=float, default=0.001)
     parser.add_argument("--batch_size", type=int, default=200)
-    parser.add_argument("--num_epochs", type=int, default=100)
+    parser.add_argument("--num_epochs", type=int, default=50)
     parser.add_argument("--early_stop", type=eval, default=True, choices=[True, False])
     parser.add_argument("--patience", type=int)
 
