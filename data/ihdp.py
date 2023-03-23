@@ -29,38 +29,29 @@ SPLIT_OPTIONS = {'train', 'test', 'all'}
 N_REALIZATIONS_OPTIONS = {1, 100, 1000}
 
 def load_and_format_covariates(file_path):
-
     data = pd.read_csv(file_path, delimiter=',')
+    return data.values
 
-    binfeats = ["bw","b.head","preterm","birth.o","nnhealth","momage"]
-    contfeats = ["sex","twin","b.marr","mom.lths","mom.hs",	"mom.scoll","cig","first","booze","drugs","work.dur","prenatal","ark","ein","har","mia","pen","tex","was",'momwhite','momblack','momhisp']
-
-    perm = binfeats + contfeats
-    x = data[perm]
-    return x.values
-
-def load_all_other_vars(file_path):
+def load_all_other_vars(file_path, num_treatments):
     data = pd.read_csv(file_path, delimiter=',')
-    t, y, y0, y1, y2 = data['z'], data['y'], data['y_0'], data['y_1'],  data['y_2']
-    mu_0, mu_1, mu_2 =  data['mu_0'], data['mu_1'], data['mu_2']
-    #return t.values.reshape(-1, 1), y, y0, y1, y2, mu_0, mu_1, mu_2
-    return t.values.reshape(-1, 1), y.values, y0.values, y1.values, y2.values, mu_0.values, mu_1.values, mu_2.values
+    t, y = data['z'], data['y']
 
-def load_ihdp_tri(return_ate=True, return_ites=True):
+    ys_dict = {}
+    for i in range(num_treatments):
+        ys_dict['y{}'.format(i)] = data['y_{}'.format(i)]
+
+    return t.values.reshape(-1, 1), y.values, ys_dict
+
+def load_data(file_path, num_treatments, return_ate=True, return_ites=True):
     d={}
-    d['w'] = load_and_format_covariates('/home/bvelasco/realcause/datasets/ihdp_tri.csv')
-    t, y, y0, y1, y2, mu_0, mu_1, mu_2 = load_all_other_vars('/home/bvelasco/realcause/datasets/ihdp_tri.csv')
+    d['w'] = load_and_format_covariates(file_path)
+    t, y, ys_dict = load_all_other_vars(file_path, num_treatments)
 
     d['t'] = t
     d['y'] = y
 
-    d['y_0'] = y0
-    d['y_1'] = y1
-    d['y_2'] = y2
-
-    d['mu_0'] = mu_0
-    d['mu_1'] = mu_1
-    d['mu_2'] = mu_2
+    for i in range(num_treatments):
+        d['y_{}'.format(i)] = ys_dict['y{}'.format(i)]
 
     if return_ites:
         ites = [y1-y0, y2-y0]
@@ -69,7 +60,6 @@ def load_ihdp_tri(return_ate=True, return_ites=True):
     if return_ate:
         ate = [y1.mean()-y0.mean(), y2.mean()-y0.mean()]
         d['ate'] = ate
-
 
     return d
 

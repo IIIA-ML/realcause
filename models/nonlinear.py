@@ -296,18 +296,10 @@ class MLP(BaseGenModel):
             for i in range(self.num_treatments):
                 y_samples_['y{}'.format(i)] = self.outcome_distribution.sample(y_dict_[i])
 
-            '''y0_, y1_, y2_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=True)
-            y0_samples = self.outcome_distribution.sample(y0_)
-            y1_samples = self.outcome_distribution.sample(y1_)
-            y2_samples = self.outcome_distribution.sample(y2_)'''
-
             if self.outcome_min is not None or self.outcome_max is not None:
                 for i in range(self.num_treatments):
                     y_samples_['y{}'.format(i)] = np.clip(y_samples_['y{}'.format(i)], self.outcome_min, self.outcome_max)
 
-                '''y0_samples = np.clip(y0_samples, self.outcome_min, self.outcome_max)
-                y1_samples = np.clip(y1_samples, self.outcome_min, self.outcome_max)
-                y2_samples = np.clip(y2_samples, self.outcome_min, self.outcome_max)'''
             return y_samples_
         else:
             y_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=False)

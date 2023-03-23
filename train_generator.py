@@ -6,7 +6,8 @@ import torch
 import gpytorch
 from data.lalonde import load_lalonde
 from data.lbidd import load_lbidd
-from data.ihdp import load_ihdp, load_ihdp_tri
+from data.ihdp import load_ihdp
+from data.general_data import load_data
 from data.twins import load_twins
 from models import HydraNet, preprocess, TrainingParams, MLPParams, LinearModel, GPModel, TarGPModel, GPParams
 from models import distributions
@@ -50,18 +51,12 @@ def get_data(args):
     elif data_name == "twins":
         d = load_twins(dataroot=args.dataroot)
         w, t, y = d["w"], d["t"], d["y"]
-    elif data_name == "ihdp_tri":
-        d = load_ihdp_tri(return_ate=True, return_ites=True)
-        w, t, y = d["w"], d["t"], d["y"] #(d["y"], d['y_0'], d['y_1'], d['y_2'])
+    elif (data_name == "ihdp_five") | (data_name == "ihdp_tri"):
+        d = load_data(file_path='datasets/'+data_name+'.csv', num_treatments=args.num_of_treatments, return_ate=True, return_ites=True)
+        w, t, y = d["w"], d["t"], d["y"]
         ites = d['ites']
         ate = d['ate']
-        true_ys = [d['y_0'], d['y_1'], d['y_2']]
-    elif data_name == "ihdp_five":
-        d = load_ihdp_tri(return_ate=True, return_ites=True)
-        w, t, y = d["w"], d["t"], d["y"] #(d["y"], d['y_0'], d['y_1'], d['y_2'])
-        ites = d['ites']
-        ate = d['ate']
-        true_ys = [d['y_0'], d['y_1'], d['y_2'], d['y_3'], d['y_4']]
+        true_ys = [d['y_{}'.format(i)] for i in range(args.num_of_treatments)]
     else:
         raise (Exception("dataset {} not implemented".format(args.data)))
 
@@ -182,7 +177,7 @@ def main(args, save_args=True, log_=True):
             mlp_params_t_w=mlp_params
         )
         network_params_ys = {
-            f"mlp_params_y{i}_w": mlp_params for i in range(3)
+            f"mlp_params_y{i}_w": mlp_params for i in range(args.num_of_treatments)
         }
         network_params ={**network_params_tw, **network_params_ys}
         logger.info(mlp_params.__dict__)
@@ -253,7 +248,7 @@ def main(args, save_args=True, log_=True):
         with open(os.path.join(args.saveroot, "all_runs.txt"), "w") as file:
             file.write(json.dumps(all_runs))
 
-        model.plot_ty_dists()
+        #model.plot_ty_dists()
 
 
     return model
@@ -263,8 +258,8 @@ def get_args():
     parser = argparse.ArgumentParser(description="causal-gen")
 
     # dataset
-    parser.add_argument("--num_of_treatments", type=int, default=3)
-    parser.add_argument("--data", type=str, default="ihdp_tri")  # TODO: fix choices
+    parser.add_argument("--num_of_treatments", type=int, default=5)
+    parser.add_argument("--data", type=str, default="ihdp_five")  # TODO: fix choices
     parser.add_argument("--dataroot", type=str, default="datasets")  # TODO: do we need it?
     parser.add_argument("--saveroot", type=str, default="save")
     parser.add_argument("--train", type=eval, default=True, choices=[True, False])

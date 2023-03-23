@@ -13,7 +13,6 @@ _DEFAULT_HYDRANET = dict(
     mlp_params_y2_w=MLPParams(),
 )
 
-
 class HydraNet(MLP):
     # noinspection PyAttributeOutsideInit
     def build_networks(self):
@@ -22,10 +21,6 @@ class HydraNet(MLP):
         for i in range(self.num_treatments):
             setattr(self, 'MLP_params_y{}_w'.format(i), self.network_params['mlp_params_y{}_w'.format(i)])
 
-        '''self.MLP_params_y0_w = self.network_params['mlp_params_y0_w']
-        self.MLP_params_y1_w = self.network_params['mlp_params_y1_w']
-        self.MLP_params_y2_w = self.network_params['mlp_params_y2_w']'''
-
         output_multiplier_t = 1 if self.binary_treatment else self.num_treatments
 
         self._mlp_w = self._build_mlp(self.dim_w, self.MLP_params_w.dim_h, self.MLP_params_w, 1) # TODO CHECKOUT THIS NU
@@ -33,13 +28,6 @@ class HydraNet(MLP):
 
         for i in range(self.num_treatments):
             setattr(self, '_mlp_y{}_w'.format(i), self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, getattr(self, 'MLP_params_y{}_w'.format(i)), self.outcome_distribution.num_params))
-
-        '''self._mlp_y0_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y0_w,
-                                         self.outcome_distribution.num_params)
-        self._mlp_y1_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y1_w,
-                                         self.outcome_distribution.num_params)
-        self._mlp_y2_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y2_w,
-                                         self.outcome_distribution.num_params)'''
 
         self.networks = [self._mlp_w, self._mlp_t_w] + [getattr(self, '_mlp_y{}_w'.format(i)) for i in range(self.num_treatments)]
 
@@ -59,14 +47,11 @@ class HydraNet(MLP):
         y_dict = {}
         for i in range(self.num_treatments):
             y_dict['y{}'.format(i)] = eval('self._mlp_y{}_w(w)'.format(i))
-        '''y0 = self._mlp_y0_w(w)
-        y1 = self._mlp_y1_w(w)
-        y2 = self._mlp_y2_w(w)'''
+
         if ret_counterfactuals:
             return [y_dict['y{}'.format(i)] for i in range(self.num_treatments)]
         else:
             t_onehot = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten()).type(torch.BoolTensor)
-            #y = torch.concatenate([y0[:, 0].reshape(-1, 1), y1[:, 0].reshape(-1, 1), y2[:, 0].reshape(-1, 1)], axis=1)
             y = torch.concatenate([y_dict['y{}'.format(i)] for i in range(self.num_treatments)], axis=1)
             y_ = torch.masked_select(y, t_onehot)
             return y_
@@ -82,9 +67,6 @@ class HydraNet(MLP):
         y_dict = {}
         for i in range(self.num_treatments):
             y_dict['y{}'.format(i)] = eval('self._mlp_y{}_w(w_)'.format(i))
-        '''y0 = self._mlp_y0_w(w_)
-        y1 = self._mlp_y1_w(w_)
-        y2 = self._mlp_y2_w(w_)'''
 
         t_onehot  = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten()).type(torch.BoolTensor)
 
@@ -99,7 +81,6 @@ class HydraNet(MLP):
         loss_t = self.treatment_distribution.loss(t, t_)
         loss_y = self.outcome_distribution.loss(y, y_)
         loss = loss_t + loss_y
-        #print(loss)
         return loss, loss_t, loss_y
 
 

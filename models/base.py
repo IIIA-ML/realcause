@@ -160,7 +160,7 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
         self.t_test_transformed = self.t_transform.transform(self.t_test)
         self.y_test_transformed = self.y_transform.transform(self.y_test)
 
-    def get_data(self, transformed=False, dataset=TRAIN, verbose=True, check=False):
+    def get_data(self, transformed=False, dataset=TRAIN, verbose=True):
         """
         Get the specific dataset. Splits were determined in the constructor.
 
@@ -273,18 +273,10 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
             # note: input to the model need to be transformed
             w = self.sample_w(untransform=False)
 
-        '''y_dict = {}
-        for i in range(self.num_treatments):
-            y_dict['y{}'.format(i)] = eval('self._mlp_y{}_w(w)'.format(i))'''
-
         y_dict = self._sample_y(t, w, ret_counterfactuals=True)
         if untransform:
             for i in range(self.num_treatments):
                 y_dict['y{}'.format(i)] = self.y_transform.untransform(y_dict['y{}'.format(i)])
-
-            '''y0 = self.y_transform.untransform(y0)
-            y1 = self.y_transform.untransform(y1)
-            y2 = self.y_transform.untransform(y2)'''
 
 
         if deg_hetero == 1.0 and causal_effect_scale == None:  # don't change heterogeneity or causal effect size
