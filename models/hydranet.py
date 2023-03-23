@@ -5,7 +5,7 @@ import torch
 import numpy as np
 
 
-_DEFAULT_TARNET = dict(
+_DEFAULT_HYDRANET = dict(
     mlp_params_w=MLPParams(),
     mlp_params_t_w=MLPParams(),
     mlp_params_y0_w=MLPParams(),
@@ -14,25 +14,34 @@ _DEFAULT_TARNET = dict(
 )
 
 
-class TarNet(MLP):
+class HydraNet(MLP):
     # noinspection PyAttributeOutsideInit
     def build_networks(self):
         self.MLP_params_w = self.network_params['mlp_params_w']
         self.MLP_params_t_w = self.network_params['mlp_params_t_w']
-        self.MLP_params_y0_w = self.network_params['mlp_params_y0_w']
-        self.MLP_params_y1_w = self.network_params['mlp_params_y1_w']
-        self.MLP_params_y2_w = self.network_params['mlp_params_y2_w']
+        for i in range(self.num_treatments):
+            setattr(self, 'MLP_params_y{}_w'.format(i), self.network_params['mlp_params_y{}_w'.format(i)])
 
-        output_multiplier_t = 1 if self.binary_treatment else 3
-        self._mlp_w = self._build_mlp(self.dim_w, self.MLP_params_w.dim_h, self.MLP_params_w, 1)
+        '''self.MLP_params_y0_w = self.network_params['mlp_params_y0_w']
+        self.MLP_params_y1_w = self.network_params['mlp_params_y1_w']
+        self.MLP_params_y2_w = self.network_params['mlp_params_y2_w']'''
+
+        output_multiplier_t = 1 if self.binary_treatment else self.num_treatments
+
+        self._mlp_w = self._build_mlp(self.dim_w, self.MLP_params_w.dim_h, self.MLP_params_w, 1) # TODO CHECKOUT THIS NU
         self._mlp_t_w = self._build_mlp_t(self.MLP_params_w.dim_h, self.dim_t, self.MLP_params_t_w, output_multiplier_t)
-        self._mlp_y0_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y0_w,
+
+        for i in range(self.num_treatments):
+            setattr(self, '_mlp_y{}_w'.format(i), self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, getattr(self, 'MLP_params_y{}_w'.format(i)), 4)) #self.outcome_distribution.num_params))
+
+        '''self._mlp_y0_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y0_w,
                                          self.outcome_distribution.num_params)
         self._mlp_y1_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y1_w,
                                          self.outcome_distribution.num_params)
         self._mlp_y2_w = self._build_mlp(self.MLP_params_w.dim_h, self.dim_y, self.MLP_params_y2_w,
-                                         self.outcome_distribution.num_params)
-        self.networks = [self._mlp_w, self._mlp_t_w, self._mlp_y0_w, self._mlp_y1_w, self._mlp_y2_w]
+                                         self.outcome_distribution.num_params)'''
+
+        self.networks = [self._mlp_w, self._mlp_t_w] + [getattr(self, '_mlp_y{}_w'.format(i)) for i in range(self.num_treatments)]
 
     def mlp_w(self, w):
         return self.MLP_params_w.activation(self._mlp_w(w))
@@ -47,14 +56,18 @@ class TarNet(MLP):
         """
         w, t = wt[:, :-1], wt[:, -1:]
         w = self.mlp_w(w)
-        y0 = self._mlp_y0_w(w)
+        y_dict = {}
+        for i in range(self.num_treatments):
+            y_dict['y{}'.format(i)] = eval('self._mlp_y{}_w(w)'.format(i))
+        '''y0 = self._mlp_y0_w(w)
         y1 = self._mlp_y1_w(w)
-        y2 = self._mlp_y2_w(w)
+        y2 = self._mlp_y2_w(w)'''
         if ret_counterfactuals:
-            return y0, y1, y2
+            return [y_dict['y{}'.format(i)][:,0].reshape(-1,1) for i in range(self.num_treatments)]
         else:
             t_onehot = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten()).type(torch.BoolTensor)
-            y = torch.concatenate([y0[:, 0].reshape(-1, 1), y1[:, 0].reshape(-1, 1), y2[:, 0].reshape(-1, 1)], axis=1)
+            #y = torch.concatenate([y0[:, 0].reshape(-1, 1), y1[:, 0].reshape(-1, 1), y2[:, 0].reshape(-1, 1)], axis=1)
+            y = torch.concatenate([y_dict['y{}'.format(i)][:,0].reshape(-1,1) for i in range(self.num_treatments)], axis=1)
             y_ = torch.masked_select(y, t_onehot)
             return y_
 
@@ -66,16 +79,19 @@ class TarNet(MLP):
         if self.ignore_w:
             w_ = torch.zeros_like(w_)
 
-        y0 = self._mlp_y0_w(w_)
+        y_dict = {}
+        for i in range(self.num_treatments):
+            y_dict['y{}'.format(i)] = eval('self._mlp_y{}_w(w_)'.format(i))
+        '''y0 = self._mlp_y0_w(w_)
         y1 = self._mlp_y1_w(w_)
-        y2 = self._mlp_y2_w(w_)
+        y2 = self._mlp_y2_w(w_)'''
 
         t_onehot  = torch.nn.functional.one_hot(t.type(torch.LongTensor).flatten()).type(torch.BoolTensor)
 
-        mean = torch.concatenate([y0[:, 0].reshape(-1, 1), y1[:, 0].reshape(-1, 1), y2[:, 0].reshape(-1, 1)], axis=1)
+        mean = torch.concatenate([y_dict['y{}'.format(i)][:,0].reshape(-1,1) for i in range(self.num_treatments)], axis=1)
         mean_ = torch.masked_select(mean, t_onehot)
 
-        var = torch.concatenate([y0[:, 1].reshape(-1, 1), y1[:, 1].reshape(-1, 1), y2[:, 1].reshape(-1, 1)], axis=1)
+        var = torch.concatenate([y_dict['y{}'.format(i)][:,1].reshape(-1,1) for i in range(self.num_treatments)], axis=1)
         var_ = torch.masked_select(var, t_onehot)
 
         y_ = torch.concatenate([mean_.reshape(-1, 1), var_.reshape(-1, 1)], axis=1)
@@ -95,7 +111,7 @@ if __name__ == "__main__":
     pp = pprint.PrettyPrinter(indent=4)
 
     dataset = 1
-    network_params = _DEFAULT_TARNET.copy()
+    network_params = _DEFAULT_HYDRANET.copy()
     if dataset == 1:
         w, t, y = load_lalonde()
         dist = distributions.MixedDistribution([0.0], distributions.LogLogistic())

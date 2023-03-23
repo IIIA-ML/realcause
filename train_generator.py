@@ -8,12 +8,11 @@ from data.lalonde import load_lalonde
 from data.lbidd import load_lbidd
 from data.ihdp import load_ihdp, load_ihdp_tri
 from data.twins import load_twins
-from models import TarNet, preprocess, TrainingParams, MLPParams, LinearModel, GPModel, TarGPModel, GPParams
+from models import HydraNet, preprocess, TrainingParams, MLPParams, LinearModel, GPModel, TarGPModel, GPParams
 from models import distributions
 import helpers
 from collections import OrderedDict
 import json
-# from utils import get_duplicates
 
 
 def get_data(args):
@@ -57,6 +56,12 @@ def get_data(args):
         ites = d['ites']
         ate = d['ate']
         true_ys = [d['y_0'], d['y_1'], d['y_2']]
+    elif data_name == "ihdp_five":
+        d = load_ihdp_tri(return_ate=True, return_ites=True)
+        w, t, y = d["w"], d["t"], d["y"] #(d["y"], d['y_0'], d['y_1'], d['y_2'])
+        ites = d['ites']
+        ate = d['ate']
+        true_ys = [d['y_0'], d['y_1'], d['y_2'], d['y_3'], d['y_4']]
     else:
         raise (Exception("dataset {} not implemented".format(args.data)))
 
@@ -105,7 +110,6 @@ def evaluate(args, model):
     check_results = model.check_outcomes_treatments(dataset="test")
 
     summary = OrderedDict()
-
     summary.update(nll=model.best_val_loss)
     summary.update(avg_t_pval=sum(t_pvals) / args.num_univariate_tests)
     summary.update(avg_y_pval=sum(y_pvals) / args.num_univariate_tests)
@@ -116,9 +120,6 @@ def evaluate(args, model):
     summary.update(q50_t_pval=np.percentile(t_pvals, 50))
     summary.update(q50_y_pval=np.percentile(y_pvals, 50))
     summary.update(check_results = check_results)
-
-    #summary.update(ate_exact=model.ate().item())
-    #summary.update(ate_noisy=model.noisy_ate().item())
 
     return summary, all_runs
 
@@ -146,8 +147,6 @@ def main(args, save_args=True, log_=True):
     else:
         exp = None
 
-    #logger.info(f"ate: {ate}")
-
     # distribution of outcome (y)
     distribution = get_distribution(args)
     logger.info(distribution)
@@ -164,32 +163,30 @@ def main(args, save_args=True, log_=True):
     outcome_min = 0 if args.y_transform == "Normalize" else None
     outcome_max = 1 if args.y_transform == "Normalize" else None
 
-    # model type
+    # Additional args
     additional_args = dict()
     additional_args['true_ys'] = true_ys
-    if args.model_type == 'tarnet':
-        Model = TarNet
 
-        logger.info('model type: tarnet')
+    # model type
+    if args.model_type == 'hydranet':
+        Model = HydraNet
+        logger.info('model type: Hydranet')
+
         mlp_params = MLPParams(
             n_hidden_layers=args.n_hidden_layers,
             dim_h=args.dim_h,
             activation=getattr(torch.nn, args.activation)(),
         )
-        logger.info(mlp_params.__dict__)
-        '''network_params = dict(
+        network_params_tw = dict(
             mlp_params_w=mlp_params,
-            mlp_params_t_w=mlp_params,
-            mlp_params_y0_w=mlp_params,
-            mlp_params_y1_w=mlp_params,
-        )'''
-        network_params = dict(
-            mlp_params_w=mlp_params,
-            mlp_params_t_w=mlp_params,
-            mlp_params_y0_w=mlp_params,
-            mlp_params_y1_w=mlp_params,
-            mlp_params_y2_w=mlp_params
+            mlp_params_t_w=mlp_params
         )
+        network_params_ys = {
+            f"mlp_params_y{i}_w": mlp_params for i in range(3)
+        }
+        network_params ={**network_params_tw, **network_params_ys}
+        logger.info(mlp_params.__dict__)
+
     elif args.model_type == 'linear':
         Model = LinearModel
 
@@ -221,6 +218,7 @@ def main(args, save_args=True, log_=True):
         raise Exception(f'`n_hidden_layers` must be nonnegative, got {args.n_hidden_layers}')
 
     model = Model(w, t, y,
+                  num_treatments=args.num_of_treatments,
                   training_params=training_params,
                   network_params=network_params,
                   binary_treatment=False, multivalued_treatment=True, outcome_distribution=distribution,
@@ -240,6 +238,7 @@ def main(args, save_args=True, log_=True):
                   additional_args=additional_args)
 
     # TODO GPU support
+    # train
     if args.train:
         print('training')
         model.train(print_=logger.info, comet_exp=exp)
@@ -254,7 +253,6 @@ def main(args, save_args=True, log_=True):
         with open(os.path.join(args.saveroot, "all_runs.txt"), "w") as file:
             file.write(json.dumps(all_runs))
 
-
         model.plot_ty_dists()
 
 
@@ -265,6 +263,7 @@ def get_args():
     parser = argparse.ArgumentParser(description="causal-gen")
 
     # dataset
+    parser.add_argument("--num_of_treatments", type=int, default=3)
     parser.add_argument("--data", type=str, default="ihdp_tri")  # TODO: fix choices
     parser.add_argument("--dataroot", type=str, default="datasets")  # TODO: do we need it?
     parser.add_argument("--saveroot", type=str, default="save")
@@ -273,14 +272,14 @@ def get_args():
     parser.add_argument('--overwrite_reload', type=str, default='', help='secondary folder name of an experiment')  # TODO: for model loading
 
     # model type
-    parser.add_argument('--model_type', type=str, default='tarnet', choices=['tarnet', 'linear', 'gp', 'targp'])  # TODO: renaming tarnet to be dragonnet
+    parser.add_argument('--model_type', type=str, default='hydranet', choices=['tarnet', 'linear', 'gp', 'targp', 'hydranet'])  # TODO: renaming tarnet to be dragonnet
 
     # distribution of outcome (y)
     parser.add_argument('--dist', type=str, default='FactorialGaussianMulti', choices=distributions.BaseDistribution.dist_names)
     parser.add_argument("--dist_args", type=str, default=list(), nargs="+")
     parser.add_argument("--atoms", type=float, default=list(), nargs="+")
 
-    # architecture for tarnet
+    # architecture for hydranet
     parser.add_argument("--n_hidden_layers", type=int, default=2)
     parser.add_argument("--dim_h", type=int, default=128)
     parser.add_argument("--activation", type=str, default="ReLU")

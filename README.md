@@ -137,7 +137,7 @@ so that a random sample of the tuple (w,t,y) can be drawn from the joint distrib
 
 We let p(w) be the empirical distribution of the training set, and parameterize p(t|w) and p(y|t,w) using
 neural networks (or other conditional generative models such as Gaussian processes). 
-The model is defined in `models/tarnet.py`. The neural networks defined there will output the parameters for 
+The model is defined in `models/hydranet.py`. The neural networks defined there will output the parameters for 
 the distribution classes defined in `models/distributions` and compute the negative log likelihood as the loss function.
 
 

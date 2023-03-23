@@ -7,7 +7,6 @@ import torch
 from torch import nn
 from torch.utils import data
 from itertools import chain
-from plotting.plotting import fig2img
 from tqdm import tqdm
 from contextlib import contextmanager
 
@@ -72,10 +71,9 @@ class CausalDataset(data.Dataset):
             self.y_transform.transform(self.y[index]),
         )
 
-
 # TODO: for more complex w, we might need to share parameters (dependent on the problem)
 class MLP(BaseGenModel):
-    def __init__(self, w, t, y, seed=1,
+    def __init__(self, w, t, y, num_treatments=3, seed=1,
                  network_params=None,
                  training_params=TrainingParams(),
                  binary_treatment=False,
@@ -104,18 +102,22 @@ class MLP(BaseGenModel):
                                   t_transform=t_transform,
                                   y_transform=y_transform,
                                   test_size=test_size)
-
+        self.num_treatments = num_treatments
         self.binary_treatment = binary_treatment
+
         if binary_treatment:  # todo: input?
             self.treatment_distribution = distributions.Bernoulli()
         else:
             self.treatment_distribution = distributions.FactorialGaussian()
+
         if multivalued_treatment:
             self.treatment_distribution = distributions.Multinoulli()
         self.outcome_distribution = outcome_distribution
+
         # todo: extract atoms before preprocessing? (i.e. using the non atomic training data's stats)
         if isinstance(outcome_distribution, distributions.MixedDistribution):
             self.outcome_distribution.atoms = self.y_transform.transform(self.outcome_distribution.atoms).tolist()
+
         self.outcome_min = outcome_min
         self.outcome_max = outcome_max
         self.early_stop = early_stop
@@ -124,13 +126,13 @@ class MLP(BaseGenModel):
         self.grad_norm = grad_norm
         self.savepath = savepath
         self.additional_args = additional_args
-
         self.dim_w = self.w_transformed.shape[1]
         self.dim_t = self.t_transformed.shape[1]
         self.dim_y = self.y_transformed.shape[1]
 
         if network_params is None:
             network_params = _DEFAULT_MLP
+
         self.network_params = network_params
         self.build_networks()
 
@@ -186,8 +188,7 @@ class MLP(BaseGenModel):
         self.MLP_params_y_tw = self.network_params['mlp_params_y_tw']
         output_multiplier_t = 1 if self.binary_treatment else 2
         self.mlp_t_w = self._build_mlp(self.dim_w, self.dim_t, self.MLP_params_t_w, output_multiplier_t)
-        self.mlp_y_tw = self._build_mlp(self.dim_w + self.dim_t, self.dim_y, self.MLP_params_y_tw,
-                                        self.outcome_distribution.num_params)
+        self.mlp_y_tw = self._build_mlp(self.dim_w + self.dim_t, self.dim_y, self.MLP_params_y_tw, self.outcome_distribution.num_params)
         self.networks = [self.mlp_t_w, self.mlp_y_tw]
 
     def _get_loss(self, w, t, y):
@@ -271,6 +272,7 @@ class MLP(BaseGenModel):
                 net.load_state_dict(params)
 
     def evaluate(self, data_loader):
+        print('Im in evaluate from MLP')
         loss = 0
         n = 0
 
@@ -287,16 +289,27 @@ class MLP(BaseGenModel):
         if self.ignore_w:
             w = np.zeros_like(w)
         wt = np.concatenate([w, t], 1)
+
         if ret_counterfactuals:
-            y0_, y1_, y2_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=True)
+            y_dict_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=True)
+
+            y_samples_ = {}
+            for i in range(self.num_treatments):
+                y_samples_[i] = self.outcome_distribution.sample(y_dict_[i])
+
+            '''y0_, y1_, y2_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=True)
             y0_samples = self.outcome_distribution.sample(y0_)
             y1_samples = self.outcome_distribution.sample(y1_)
-            y2_samples = self.outcome_distribution.sample(y2_)
+            y2_samples = self.outcome_distribution.sample(y2_)'''
+
             if self.outcome_min is not None or self.outcome_max is not None:
-                y0_samples = np.clip(y0_samples, self.outcome_min, self.outcome_max)
+                for i in range(self.num_treatments):
+                    y_samples_[i] = np.clip(y_samples_[i], self.outcome_min, self.outcome_max)
+
+                '''y0_samples = np.clip(y0_samples, self.outcome_min, self.outcome_max)
                 y1_samples = np.clip(y1_samples, self.outcome_min, self.outcome_max)
-                y2_samples = np.clip(y2_samples, self.outcome_min, self.outcome_max)
-            return y0_samples, y1_samples, y2_samples
+                y2_samples = np.clip(y2_samples, self.outcome_min, self.outcome_max)'''
+            return [y_samples_[i] for i in range(self.num_treatments)]
         else:
             y_ = self.mlp_y_tw(torch.from_numpy(wt).float(), ret_counterfactuals=False)
             y_samples = self.outcome_distribution.sample(y_)
@@ -305,6 +318,7 @@ class MLP(BaseGenModel):
             return y_samples
 
     def mean_y(self, t, w):
+        print('Im in mean_y from MLP')
         if self.ignore_w:
             w = np.zeros_like(w)
         wt = np.concatenate([w, t], 1)

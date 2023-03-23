@@ -200,10 +200,11 @@ class Multinoulli(BaseDistribution):
 
     @property
     def num_params(self):
-        return 1
+        return 2
 
     def mean(self, params):
-        return torch.sigmoid(params)
+        # TODO
+        return torch.softmax(params)
 
 class FactorialGaussianMulti(BaseDistribution):
     def likelihood(self, x, params):

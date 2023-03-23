@@ -1,4 +1,4 @@
 from .linear import *
 from .nonlinear import *
-from .tarnet import *
+from .hydranet import *
 from .gp import *

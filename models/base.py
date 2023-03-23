@@ -196,8 +196,6 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
             if verbose:
                 warnings.warn("untransformed")
 
-        #if check:
-
         return w, t, y
 
     def sample_w(self, untransform=True, seed=None, dataset=TRAIN):
@@ -275,11 +273,18 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
             # note: input to the model need to be transformed
             w = self.sample_w(untransform=False)
 
-        y0, y1, y2 = self._sample_y(t, w, ret_counterfactuals=True)
+        '''y_dict = {}
+        for i in range(self.num_treatments):
+            y_dict['y{}'.format(i)] = eval('self._mlp_y{}_w(w)'.format(i))'''
+
+        y_dict = self._sample_y(t, w, ret_counterfactuals=True)
         if untransform:
-            y0 = self.y_transform.untransform(y0)
+            for i in range(self.num_treatments):
+                y_dict['y{}'.format(i)] = self.y_transform.untransform(y_dict['y{}'.format(i)])
+
+            '''y0 = self.y_transform.untransform(y0)
             y1 = self.y_transform.untransform(y1)
-            y2 = self.y_transform.untransform(y2)
+            y2 = self.y_transform.untransform(y2)'''
 
 
         if deg_hetero == 1.0 and causal_effect_scale == None:  # don't change heterogeneity or causal effect size
@@ -319,12 +324,13 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
                 y0 = causal_effect_scale / ate * y0
 
         if ret_counterfactuals:
-            return y0, y1, y2
+            return [y_dict['y{}'.format(i)][:,0].reshape(-1,1) for i in range(self.num_treatments)]
         else:
             t_f = t.flatten().astype(int)
-            t_o = np.zeros((t_f.size, 3))
+            t_o = np.zeros((t_f.size, self.num_treatments))
             t_o[np.arange(t_f.size), t_f] = 1
-            y_conc = np.concatenate([y0.reshape(-1, 1), y1.reshape(-1, 1), y2.reshape(-1, 1)], axis=1)
+            #y_conc = np.concatenate([y0.reshape(-1, 1), y1.reshape(-1, 1), y2.reshape(-1, 1)], axis=1)
+            y_conc = np.concatenate([y_dict['y{}'.format(i)][:,0].reshape(-1,1) for i in range(self.num_treatments)], axis=1)
             if t_o.shape[1]==2:
                 print('here')
             y_ = (y_conc * t_o).sum(1)
@@ -362,16 +368,18 @@ class BaseGenModel(object, metaclass=BaseGenModelMeta):
         elif transform_w:
             w = self.w_transform.transform(w)
         t = self.sample_t(w, untransform=False, overlap=overlap)
+
         if ret_counterfactuals:
-            y0, y1, y2 = self.sample_y(
+            y = self.sample_y(
                 t, w, untransform=False, causal_effect_scale=causal_effect_scale,
                 deg_hetero=deg_hetero, ret_counterfactuals=True
             )
             if untransform:
+                # TODO
                 return (self.w_transform.untransform(w), self.t_transform.untransform(t),
                         (self.y_transform.untransform(y0), self.y_transform.untransform(y1)))
             else:
-                return w, t, (y0, y1, y2)
+                return w, t, y
         else:
             y = self.sample_y(t, w, untransform=False,
                               causal_effect_scale=causal_effect_scale,
